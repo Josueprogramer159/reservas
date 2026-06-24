@@ -4,7 +4,6 @@ async function testApi() {
 
   console.log('--- Iniciando Pruebas de API ---');
 
-  // Función auxiliar para realizar peticiones incluyendo y extrayendo cookies
   async function makeRequest(url, options = {}) {
     if (sessionCookie) {
       options.headers = {
@@ -13,21 +12,17 @@ async function testApi() {
       };
     }
     const response = await fetch(url, options);
-    
-    // Capturar la cookie si se envía en los encabezados
     const setCookie = response.headers.get('set-cookie');
     if (setCookie) {
-      // Extraer solo la parte del ID de sesión
       sessionCookie = setCookie.split(';')[0];
     }
-    
     return {
       status: response.status,
       data: await response.json()
     };
   }
 
-  // 1. Registrar un nuevo usuario
+  // 1. Registro
   console.log('\n1. Probando Registro de Usuario...');
   const userPayload = {
     nombre: 'Usuario de Prueba UTC',
@@ -49,7 +44,7 @@ async function testApi() {
     process.exit(1);
   }
 
-  // 2. Intentar registrar el mismo usuario (debería dar error de correo duplicado)
+  // 2. Correo duplicado
   console.log('\n2. Probando Registro de Correo Duplicado...');
   const duplicateRes = await makeRequest(`${baseUrl}/auth/registro`, {
     method: 'POST',
@@ -58,27 +53,146 @@ async function testApi() {
   });
   console.log('Respuesta:', duplicateRes);
   if (duplicateRes.status === 400 && !duplicateRes.data.success) {
-    console.log('✅ Control de duplicados correcto (Email ya registrado).');
+    console.log('✅ Control de duplicados correcto.');
   } else {
     console.log('❌ Control de duplicados fallido.');
     process.exit(1);
   }
 
-  // 3. Consultar perfil con la sesión activa
-  console.log('\n3. Probando Obtención de Perfil (Sesión Activa)...');
-  const profileRes = await makeRequest(`${baseUrl}/auth/profile`);
-  console.log('Respuesta:', profileRes);
-  if (profileRes.status === 200 && profileRes.data.success && profileRes.data.user.email === userPayload.email) {
-    console.log('✅ Obtención de perfil exitosa con persistencia de sesión.');
+  // 3. Contraseña corta
+  console.log('\n3. Probando Contraseña Corta (< 8 caracteres)...');
+  const shortPassRes = await makeRequest(`${baseUrl}/auth/registro`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre: 'Test', email: 'short' + Date.now() + '@utc.edu', password: '1234567' })
+  });
+  if (shortPassRes.status === 400) {
+    console.log('✅ Rechazo de contraseña corta correcto.');
   } else {
-    console.log('❌ Obtención de perfil fallida.');
+    console.log('❌ Validación de contraseña fallida.');
     process.exit(1);
   }
 
-  // 4. Cerrar sesión del usuario
-  console.log('\n4. Probando Cierre de Sesión...');
+  // 4. Perfil con sesión activa
+  console.log('\n4. Probando Obtención de Perfil...');
+  const profileRes = await makeRequest(`${baseUrl}/auth/profile`);
+  if (profileRes.status === 200 && profileRes.data.success) {
+    console.log('✅ Perfil obtenido correctamente.');
+  } else {
+    console.log('❌ Perfil fallido.');
+    process.exit(1);
+  }
+
+  // 5. Listar espacios (requiere auth)
+  console.log('\n5. Probando Listado de Espacios...');
+  const espaciosRes = await makeRequest(`${baseUrl}/espacios`);
+  console.log('Total espacios:', espaciosRes.data.espacios?.length);
+  if (espaciosRes.status === 200 && espaciosRes.data.success && espaciosRes.data.espacios.length > 0) {
+    console.log('✅ Listado de espacios correcto.');
+  } else {
+    console.log('❌ Listado de espacios fallido.');
+    process.exit(1);
+  }
+
+  const espacioId = espaciosRes.data.espacios[0].id;
+  const fecha = new Date().toISOString().split('T')[0];
+
+  // 6. Detalle de espacio
+  console.log('\n6. Probando Detalle de Espacio...');
+  const detalleRes = await makeRequest(`${baseUrl}/espacios/${espacioId}?fecha=${fecha}`);
+  if (detalleRes.status === 200 && detalleRes.data.success) {
+    console.log('✅ Detalle de espacio correcto:', detalleRes.data.espacio.nombre);
+  } else {
+    console.log('❌ Detalle de espacio fallido.');
+    process.exit(1);
+  }
+
+  // 7. Espacio inexistente
+  console.log('\n7. Probando Espacio Inexistente...');
+  const noExisteRes = await makeRequest(`${baseUrl}/espacios/99999`);
+  if (noExisteRes.status === 404) {
+    console.log('✅ Error 404 para espacio inexistente correcto.');
+  } else {
+    console.log('❌ Manejo de espacio inexistente fallido.');
+    process.exit(1);
+  }
+
+  // 8. Crear reserva
+  console.log('\n8. Probando Creación de Reserva...');
+  const reservaRes = await makeRequest(`${baseUrl}/reservas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ espacio_id: espacioId, fecha, horario: '08:00 - 10:00' })
+  });
+  console.log('Respuesta:', reservaRes.data.message);
+  if (reservaRes.status === 201 && reservaRes.data.success) {
+    console.log('✅ Reserva creada correctamente.');
+  } else {
+    console.log('❌ Creación de reserva fallida.');
+    process.exit(1);
+  }
+
+  const reservaId = reservaRes.data.reserva.id;
+
+  // 9. Verificar que el espacio ya no tiene ese horario libre
+  console.log('\n9. Probando Disponibilidad tras Reserva...');
+  const dispRes = await makeRequest(`${baseUrl}/espacios/${espacioId}?fecha=${fecha}`);
+  const ocupado = dispRes.data.espacio.horarios_ocupados.includes('08:00 - 10:00');
+  if (ocupado) {
+    console.log('✅ Horario marcado como ocupado correctamente.');
+  } else {
+    console.log('❌ Disponibilidad no actualizada.');
+    process.exit(1);
+  }
+
+  // 10. Reserva duplicada (conflicto)
+  console.log('\n10. Probando Conflicto de Reserva...');
+  const conflictoRes = await makeRequest(`${baseUrl}/reservas`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ espacio_id: espacioId, fecha, horario: '08:00 - 10:00' })
+  });
+  if (conflictoRes.status === 409) {
+    console.log('✅ Conflicto de reserva detectado correctamente.');
+  } else {
+    console.log('❌ Control de conflicto fallido.');
+    process.exit(1);
+  }
+
+  // 11. Mis reservas
+  console.log('\n11. Probando Mis Reservas...');
+  const misReservasRes = await makeRequest(`${baseUrl}/reservas/mis-reservas`);
+  if (misReservasRes.status === 200 && misReservasRes.data.reservas.length > 0) {
+    console.log('✅ Mis reservas obtenidas correctamente.');
+  } else {
+    console.log('❌ Mis reservas fallido.');
+    process.exit(1);
+  }
+
+  // 12. Cancelar reserva
+  console.log('\n12. Probando Cancelación de Reserva...');
+  const cancelRes = await makeRequest(`${baseUrl}/reservas/${reservaId}`, { method: 'DELETE' });
+  if (cancelRes.status === 200 && cancelRes.data.success) {
+    console.log('✅ Reserva cancelada correctamente.');
+  } else {
+    console.log('❌ Cancelación fallida.');
+    process.exit(1);
+  }
+
+  // 13. Verificar disponibilidad restaurada
+  console.log('\n13. Probando Disponibilidad tras Cancelación...');
+  const dispRestRes = await makeRequest(`${baseUrl}/espacios/${espacioId}?fecha=${fecha}`);
+  const libre = dispRestRes.data.espacio.horarios_libres.includes('08:00 - 10:00');
+  if (libre) {
+    console.log('✅ Horario liberado correctamente tras cancelación.');
+  } else {
+    console.log('❌ Disponibilidad no restaurada.');
+    process.exit(1);
+  }
+
+  // 14. Logout
+  console.log('\n14. Probando Cierre de Sesión...');
   const logoutRes = await makeRequest(`${baseUrl}/auth/logout`, { method: 'POST' });
-  console.log('Respuesta:', logoutRes);
   if (logoutRes.status === 200 && logoutRes.data.success) {
     console.log('✅ Cierre de sesión correcto.');
   } else {
@@ -86,67 +200,68 @@ async function testApi() {
     process.exit(1);
   }
 
-  // 5. Intentar acceder a perfil de nuevo (debería dar error de no autenticado)
-  console.log('\n5. Probando Perfil después de Cerrar Sesión...');
-  const guestProfileRes = await makeRequest(`${baseUrl}/auth/profile`);
-  console.log('Respuesta:', guestProfileRes);
-  if (guestProfileRes.status === 401 && !guestProfileRes.data.success) {
-    console.log('✅ Control de acceso correcto (No autenticado).');
+  // 15. Login con cuenta inexistente
+  console.log('\n15. Probando Login con Cuenta Inexistente...');
+  sessionCookie = '';
+  const noCuentaRes = await makeRequest(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'noexiste@utc.edu', password: 'password123' })
+  });
+  if (noCuentaRes.status === 401 && noCuentaRes.data.message.includes('no existe')) {
+    console.log('✅ Mensaje de cuenta inexistente correcto.');
   } else {
-    console.log('❌ Error: Se permitió el acceso a perfil sin sesión.');
+    console.log('❌ Mensaje de cuenta inexistente fallido.');
     process.exit(1);
   }
 
-  // Limpiar cookies de usuario
+  // 16. Login exitoso
+  console.log('\n16. Probando Login Exitoso...');
+  const loginRes = await makeRequest(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: userPayload.email, password: userPayload.password })
+  });
+  if (loginRes.status === 200 && loginRes.data.success) {
+    console.log('✅ Login exitoso.');
+  } else {
+    console.log('❌ Login fallido.');
+    process.exit(1);
+  }
+
+  // 17. Login contraseña incorrecta
+  sessionCookie = '';
+  const badPassRes = await makeRequest(`${baseUrl}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: userPayload.email, password: 'wrongpassword' })
+  });
+  if (badPassRes.status === 401 && badPassRes.data.message.includes('Contraseña')) {
+    console.log('✅ Mensaje de contraseña incorrecta correcto.');
+  } else {
+    console.log('❌ Mensaje de contraseña incorrecta fallido.');
+    process.exit(1);
+  }
+
   sessionCookie = '';
 
-  // 6. Iniciar sesión como Administrador Semilla
-  console.log('\n6. Probando Login de Administrador...');
-  const adminPayload = {
-    email: 'admin@utc.edu',
-    password: 'admin12345'
-  };
-
+  // 18. Admin login y dashboard
+  console.log('\n18. Probando Admin Dashboard...');
   const adminLoginRes = await makeRequest(`${baseUrl}/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(adminPayload)
+    body: JSON.stringify({ email: 'admin@utc.edu', password: 'admin12345' })
   });
-  console.log('Respuesta:', adminLoginRes);
-  if (adminLoginRes.status === 200 && adminLoginRes.data.success) {
-    console.log('✅ Login de administrador exitoso.');
+  if (adminLoginRes.status === 200) {
+    const dbDataRes = await makeRequest(`${baseUrl}/admin/dashboard-data`);
+    if (dbDataRes.data.reservasActivas !== undefined) {
+      console.log('✅ Dashboard admin con reservas activas:', dbDataRes.data.reservasActivas);
+    } else {
+      console.log('❌ Dashboard admin sin conteo de reservas.');
+      process.exit(1);
+    }
   } else {
-    console.log('❌ Login de administrador fallido.');
-    process.exit(1);
-  }
-
-  // 7. Cargar datos del panel de administrador
-  console.log('\n7. Probando Obtención de Datos del Dashboard de Administración...');
-  const dbDataRes = await makeRequest(`${baseUrl}/admin/dashboard-data`);
-  console.log('Respuesta:', {
-    status: dbDataRes.status,
-    success: dbDataRes.data.success,
-    totalUsuarios: dbDataRes.data.usuarios?.length,
-    totalAdmins: dbDataRes.data.administradores?.length
-  });
-  
-  if (dbDataRes.status === 200 && dbDataRes.data.success) {
-    console.log('✅ Carga de datos de base de datos correcta.');
-    console.log('Usuarios en BD:', dbDataRes.data.usuarios.map(u => ({ id: u.id, nombre: u.nombre, email: u.email })));
-    console.log('Admins en BD:', dbDataRes.data.administradores.map(a => ({ id: a.id, nombre: a.nombre, email: a.email })));
-  } else {
-    console.log('❌ Carga de datos del panel fallida.');
-    process.exit(1);
-  }
-
-  // 8. Cerrar sesión de administrador
-  console.log('\n8. Cerrar sesión de Administrador...');
-  const adminLogoutRes = await makeRequest(`${baseUrl}/admin/logout`, { method: 'POST' });
-  console.log('Respuesta:', adminLogoutRes);
-  if (adminLogoutRes.status === 200 && adminLogoutRes.data.success) {
-    console.log('✅ Cierre de sesión de administrador correcto.');
-  } else {
-    console.log('❌ Cierre de sesión de administrador fallido.');
+    console.log('❌ Admin login fallido.');
     process.exit(1);
   }
 

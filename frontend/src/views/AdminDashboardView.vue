@@ -45,8 +45,57 @@
         </div>
         <div>
           <h4 class="text-slate-400 font-semibold text-xs uppercase">Reservas Activas</h4>
-          <p class="text-2xl font-extrabold text-slate-900 mt-1">2</p>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ reservasActivas }}</p>
         </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 mb-10">
+      <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Configuración de Reservas</h3>
+          <p class="text-sm text-slate-500 mt-1">Define la fecha y el horario que usarán los usuarios al presionar reservar.</p>
+        </div>
+      </div>
+
+      <div v-if="settingsMessage" class="mb-4 p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">
+        {{ settingsMessage }}
+      </div>
+      <div v-if="settingsError" class="mb-4 p-3.5 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium">
+        {{ settingsError }}
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1">Fecha de reserva</label>
+          <input v-model="reservationSettingsForm.fecha" type="date" class="form-input text-sm" :min="todayDate">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-500 mb-1">Horario de reserva</label>
+          <select v-model="reservationSettingsForm.horario" class="form-input text-sm">
+            <option value="" disabled>Selecciona un horario</option>
+            <option v-for="horario in availableHorarios" :key="horario" :value="horario">{{ horario }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-4 mt-6">
+        <p class="text-xs text-slate-500">
+          Configuración actual:
+          <span v-if="reservationSettingsForm.fecha && reservationSettingsForm.horario" class="font-semibold text-slate-700">
+            {{ reservationSettingsForm.fecha }} | {{ reservationSettingsForm.horario }}
+          </span>
+          <span v-else class="font-semibold text-amber-600">
+            Sin configuración definida
+          </span>
+        </p>
+        <button
+          @click="saveReservationSettings"
+          :disabled="savingSettings || !reservationSettingsForm.fecha || !reservationSettingsForm.horario"
+          class="bg-[#003087] text-white font-bold px-5 py-3 rounded-xl text-sm hover:bg-blue-800 transition disabled:opacity-50"
+        >
+          {{ savingSettings ? 'Guardando...' : 'Guardar Configuración' }}
+        </button>
       </div>
     </div>
 
@@ -139,7 +188,27 @@ export default {
     return {
       state: authState,
       users: [],
-      admins: []
+      admins: [],
+      reservasActivas: 0,
+      reservationSettingsForm: {
+        fecha: '',
+        horario: ''
+      },
+      availableHorarios: [
+        '08:00 - 10:00',
+        '10:00 - 12:00',
+        '12:00 - 14:00',
+        '14:00 - 16:00',
+        '16:00 - 18:00'
+      ],
+      savingSettings: false,
+      settingsMessage: '',
+      settingsError: ''
+    }
+  },
+  computed: {
+    todayDate() {
+      return new Date().toISOString().split('T')[0];
     }
   },
   mounted() {
@@ -155,9 +224,37 @@ export default {
         if (data.success) {
           this.users = data.usuarios || [];
           this.admins = data.administradores || [];
+          this.reservasActivas = data.reservasActivas ?? 0;
+          this.reservationSettingsForm.fecha = data.configuracionReserva?.fecha || '';
+          this.reservationSettingsForm.horario = data.configuracionReserva?.horario || '';
         }
       } catch (error) {
         console.error('Error al intentar obtener los datos del panel de administrador:', error);
+      }
+    },
+    async saveReservationSettings() {
+      this.savingSettings = true;
+      this.settingsMessage = '';
+      this.settingsError = '';
+      try {
+        const response = await fetch('/api/admin/reservation-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.reservationSettingsForm)
+        });
+        const data = await response.json();
+        if (data.success) {
+          this.settingsMessage = data.message;
+          this.reservationSettingsForm.fecha = data.configuracionReserva?.fecha || '';
+          this.reservationSettingsForm.horario = data.configuracionReserva?.horario || '';
+        } else {
+          this.settingsError = data.message || 'No se pudo guardar la configuración';
+        }
+      } catch (error) {
+        console.error('Error al guardar configuración de reserva:', error);
+        this.settingsError = 'Error de conexión al guardar la configuración';
+      } finally {
+        this.savingSettings = false;
       }
     },
     formatDate(dateString) {

@@ -159,7 +159,7 @@ export default {
         const data = await response.json();
         if (data.success) {
           this.state.logoutUser();
-          this.$router.push('/');
+          this.$router.push('/login');
         }
       } catch (error) {
         console.error('Error al intentar cerrar la sesión del usuario:', error);

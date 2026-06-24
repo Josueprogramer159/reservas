@@ -1,5 +1,7 @@
 import bcrypt from 'bcryptjs';
 import pool from '../db/database.js';
+import { HORARIOS_DISPONIBLES } from '../constants/horarios.js';
+import { getReservationConfig, saveReservationConfig } from '../utils/reservationConfig.js';
 
 export const login = async (req, res) => {
   try {
@@ -85,14 +87,61 @@ export const getDashboardData = async (req, res) => {
   try {
     const usuariosRes = await pool.query('SELECT id, nombre, email, fecha_registro FROM usuarios ORDER BY id DESC');
     const adminsRes = await pool.query('SELECT id, nombre, email, rol, activo, fecha_creacion FROM administradores ORDER BY id DESC');
+    const reservasRes = await pool.query(`SELECT COUNT(*) FROM reservas WHERE estado = 'confirmado'`);
+    const configuracionReserva = await getReservationConfig();
 
     res.json({
       success: true,
       usuarios: usuariosRes.rows,
-      administradores: adminsRes.rows
+      administradores: adminsRes.rows,
+      reservasActivas: parseInt(reservasRes.rows[0].count),
+      configuracionReserva
     });
   } catch (error) {
     console.error('Error al obtener datos del panel de administrador:', error);
     res.status(500).json({ success: false, message: 'Error al obtener datos del servidor' });
+  }
+};
+
+export const getReservationSettings = async (req, res) => {
+  if (!req.session.adminId || req.session.role !== 'admin') {
+    return res.status(401).json({ success: false, message: 'No autorizado' });
+  }
+
+  try {
+    const configuracionReserva = await getReservationConfig();
+    res.json({ success: true, configuracionReserva });
+  } catch (error) {
+    console.error('Error al obtener configuración de reserva:', error);
+    res.status(500).json({ success: false, message: 'Error al obtener la configuración de reservas' });
+  }
+};
+
+export const updateReservationSettings = async (req, res) => {
+  if (!req.session.adminId || req.session.role !== 'admin') {
+    return res.status(401).json({ success: false, message: 'No autorizado' });
+  }
+
+  try {
+    const { fecha, horario } = req.body;
+
+    if (!fecha || !horario) {
+      return res.status(400).json({ success: false, message: 'La fecha y el horario son obligatorios' });
+    }
+
+    if (!HORARIOS_DISPONIBLES.includes(horario)) {
+      return res.status(400).json({ success: false, message: 'El horario seleccionado no es válido' });
+    }
+
+    const configuracionReserva = await saveReservationConfig(fecha, horario);
+
+    res.json({
+      success: true,
+      message: 'Configuración de reservas actualizada correctamente',
+      configuracionReserva
+    });
+  } catch (error) {
+    console.error('Error al actualizar configuración de reserva:', error);
+    res.status(500).json({ success: false, message: 'Error al actualizar la configuración de reservas' });
   }
 };

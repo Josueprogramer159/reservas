@@ -67,6 +67,12 @@
             <p v-if="errors.confirmPassword" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.confirmPassword }}</p>
           </div>
 
+          <!-- Alerta de Éxito -->
+          <div v-if="successMessage" class="mb-5 p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium flex items-center space-x-2">
+            <CheckCircle class="w-5 h-5 flex-shrink-0 text-emerald-500" />
+            <span>{{ successMessage }}</span>
+          </div>
+
           <!-- Alerta de Error General -->
           <div v-if="errorMessage" class="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium flex items-center space-x-2">
             <AlertCircle class="w-5 h-5 flex-shrink-0 text-red-500" />
@@ -99,14 +105,15 @@
 </template>
 
 <script>
-import { UserPlus, AlertCircle } from 'lucide-vue-next';
+import { UserPlus, AlertCircle, CheckCircle } from 'lucide-vue-next';
 import { authState } from '../router';
 
 export default {
   name: 'RegisterView',
   components: {
     UserPlus,
-    AlertCircle
+    AlertCircle,
+    CheckCircle
   },
   data() {
     return {
@@ -116,30 +123,44 @@ export default {
       confirmPassword: '',
       errors: {},
       errorMessage: '',
+      successMessage: '',
       loading: false
     }
   },
   methods: {
     validateForm() {
       this.errors = {};
-      
+      const camposFaltantes = [];
+
+      if (!this.nombre.trim()) camposFaltantes.push('nombre');
+      if (!this.email.trim()) camposFaltantes.push('correo electrónico');
+      if (!this.password) camposFaltantes.push('contraseña');
+      if (!this.confirmPassword) camposFaltantes.push('confirmar contraseña');
+
+      if (camposFaltantes.length > 0) {
+        this.errorMessage = `Campos obligatorios faltantes: ${camposFaltantes.join(', ')}`;
+        return false;
+      }
+
+      this.errorMessage = '';
+
       if (this.nombre.trim().length < 2) {
         this.errors.nombre = 'El nombre es muy corto (mínimo 2 caracteres).';
       }
-      
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(this.email)) {
         this.errors.email = 'Introduce un correo electrónico válido.';
       }
-      
-      if (this.password.length < 6) {
-        this.errors.password = 'La contraseña debe tener al menos 6 caracteres.';
+
+      if (this.password.length < 8) {
+        this.errors.password = 'La contraseña debe tener al menos 8 caracteres.';
       }
-      
+
       if (this.password !== this.confirmPassword) {
         this.errors.confirmPassword = 'Las contraseñas no coinciden.';
       }
-      
+
       return Object.keys(this.errors).length === 0;
     },
     
@@ -165,7 +186,8 @@ export default {
         if (data.success) {
           authState.user = data.user;
           authState.admin = null;
-          this.$router.push('/dashboard');
+          this.successMessage = data.message || 'Registro exitoso. Tu cuenta ha sido creada correctamente.';
+          setTimeout(() => this.$router.push('/dashboard'), 1500);
         } else {
           this.errorMessage = data.message || 'Error al registrar la cuenta.';
         }

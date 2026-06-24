@@ -92,16 +92,19 @@ export default {
   methods: {
     validateForm() {
       this.errors = {};
-      
+
+      if (!this.email.trim() || !this.password) {
+        this.errorMessage = 'Todos los campos son obligatorios';
+        return false;
+      }
+
+      this.errorMessage = '';
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(this.email)) {
         this.errors.email = 'Introduce un correo electrónico válido.';
       }
-      
-      if (this.password.length < 6) {
-        this.errors.password = 'La contraseña debe tener al menos 6 caracteres.';
-      }
-      
+
       return Object.keys(this.errors).length === 0;
     },
     

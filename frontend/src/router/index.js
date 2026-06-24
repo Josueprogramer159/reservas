@@ -5,6 +5,7 @@ import RegisterView from '../views/RegisterView.vue'
 import DashboardView from '../views/DashboardView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
+import SpaceDetailView from '../views/SpaceDetailView.vue'
 import { reactive } from 'vue'
 
 // Estado de sesión reactivo y compartido
@@ -84,6 +85,12 @@ const routes = [
     path: '/dashboard', 
     name: 'Dashboard', 
     component: DashboardView,
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/espacios/:id',
+    name: 'SpaceDetail',
+    component: SpaceDetailView,
     meta: { requiresAuth: true, role: 'user' }
   },
   { 

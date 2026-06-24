@@ -102,7 +102,72 @@ async function initDb() {
       // Ignorar si el índice ya existe
     }
 
-    // 4. Insertar datos semilla (Administrador por defecto)
+    // 4. Tabla Espacios
+    console.log('Creando tabla de espacios...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS espacios (
+        id SERIAL PRIMARY KEY,
+        nombre VARCHAR(200) NOT NULL,
+        tipo VARCHAR(50) NOT NULL,
+        capacidad INTEGER NOT NULL,
+        ubicacion VARCHAR(200) NOT NULL,
+        descripcion TEXT,
+        imagen VARCHAR(500),
+        info_complementaria TEXT,
+        activo BOOLEAN DEFAULT true,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 5. Tabla Reservas
+    console.log('Creando tabla de reservas...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS reservas (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        espacio_id INTEGER NOT NULL REFERENCES espacios(id) ON DELETE CASCADE,
+        fecha DATE NOT NULL,
+        horario VARCHAR(20) NOT NULL,
+        estado VARCHAR(20) DEFAULT 'confirmado',
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    try {
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_reservas_espacio_fecha_horario_activa
+        ON reservas (espacio_id, fecha, horario)
+        WHERE estado = 'confirmado';
+      `);
+    } catch (e) {
+      // Ignorar si el índice ya existe
+    }
+
+    // 6. Insertar espacios semilla
+    console.log('Insertando espacios semilla...');
+    const espaciosSemilla = [
+      ['Laboratorio de Computación Avanzada B3', 'Laboratorios', 30, 'Bloque B, Segundo Piso', 'Equipado con 30 ordenadores de alto rendimiento e internet de fibra óptica.', 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80&w=600', 'Incluye proyector, aire acondicionado y acceso WiFi de alta velocidad.'],
+      ['Cancha de Fútbol Sintética Nº 1', 'Canchas', 22, 'Área Deportiva Principal', 'Cancha reglamentaria de césped sintético ideal para entrenamientos y partidos.', 'https://images.unsplash.com/photo-1544698310-74ea9d1c8258?auto=format&fit=crop&q=80&w=600', 'Incluye vestuarios, iluminación nocturna y graderías para 50 espectadores.'],
+      ['Auditorio de Conferencias UTC', 'Salas', 120, 'Bloque Administrativo, PB', 'Sala magna equipada con sonido envolvente y proyector de alta definición.', 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=600', 'Ideal para eventos académicos, conferencias y presentaciones institucionales.'],
+      ['Laboratorio de Robótica y Hardware', 'Laboratorios', 20, 'Bloque C, Primer Piso', 'Mesas de trabajo técnico equipadas con osciloscopios, cautines y kits Arduino.', 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&q=80&w=600', 'Requiere credencial de acceso. Uso exclusivo para proyectos académicos.'],
+      ['Cancha de Baloncesto y Vóley Cubierta', 'Canchas', 40, 'Coliseo Universitario', 'Coliseo techado con tableros profesionales y gradas para espectadores.', 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&q=80&w=600', 'Disponible para torneos inter-facultades y entrenamientos deportivos.'],
+      ['Sala de Estudio Grupal A2', 'Salas', 12, 'Bloque A, Primer Piso', 'Espacio silencioso equipado con pizarra acrílica y mesa redonda para trabajos colaborativos.', 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=600', 'Reserva máxima de 3 horas por sesión. Silencio obligatorio.']
+    ];
+
+    const espaciosCheck = await pool.query('SELECT COUNT(*) FROM espacios');
+    if (parseInt(espaciosCheck.rows[0].count) === 0) {
+      for (const esp of espaciosSemilla) {
+        await pool.query(`
+          INSERT INTO espacios (nombre, tipo, capacidad, ubicacion, descripcion, imagen, info_complementaria, activo)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+        `, esp);
+      }
+      console.log(`${espaciosSemilla.length} espacios semilla insertados.`);
+    } else {
+      console.log('Los espacios semilla ya existen en la base de datos.');
+    }
+
+    // 7. Insertar datos semilla (Administrador por defecto)
     console.log('Insertando administrador semilla...');
     const adminEmail = 'admin@utc.edu';
     const adminPasswordRaw = 'admin12345';
