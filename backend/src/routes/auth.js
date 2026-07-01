@@ -1,5 +1,5 @@
 import express from 'express';
-import { registro, login, logout, getProfile } from '../controllers/authController.js';
+import { registro, login, logout, getProfile, verificarCorreo, restablecerPassword } from '../controllers/authController.js';
 
 const router = express.Router();
 
@@ -7,6 +7,8 @@ router.post('/registro', registro);
 router.post('/login', login);
 router.post('/logout', logout);
 router.get('/profile', getProfile);
-router.get('/perfil', getProfile); // Soporte para ambos nombres de endpoint
+router.get('/perfil', getProfile);
+router.post('/verificar-correo', verificarCorreo);
+router.post('/restablecer-password', restablecerPassword);
 
 export default router;

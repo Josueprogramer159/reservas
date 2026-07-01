@@ -65,6 +65,10 @@
             <router-link to="/admin-login" class="border border-[#003087]/20 text-[#003087] hover:bg-[#003087]/5 px-4 py-2 rounded-lg text-sm font-medium transition-colors">
               Acceso Admin
             </router-link>
+            <router-link to="/invitado" class="border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5">
+              <Eye class="w-3.5 h-3.5" />
+              Acceso como invitado
+            </router-link>
           </template>
         </div>
 
@@ -123,6 +127,10 @@
           <router-link to="/admin-login" @click="isOpen = false" class="block text-[#003087] hover:bg-[#003087]/5 px-3 py-2 rounded-md text-base font-medium">
             Acceso Admin
           </router-link>
+          <router-link to="/invitado" @click="isOpen = false" class="block text-slate-600 hover:bg-slate-50 px-3 py-2 rounded-md text-base font-medium flex items-center gap-2">
+            <Eye class="w-4 h-4" />
+            Acceso como invitado
+          </router-link>
         </template>
       </div>
     </div>
@@ -130,7 +138,7 @@
 </template>
 
 <script>
-import { Calendar, User, LogOut, Menu, X, ShieldAlert } from 'lucide-vue-next';
+import { Calendar, User, LogOut, Menu, X, ShieldAlert, Eye } from 'lucide-vue-next';
 import { authState } from '../router';
 
 export default {
@@ -141,7 +149,8 @@ export default {
     LogOut,
     Menu,
     X,
-    ShieldAlert
+    ShieldAlert,
+    Eye
   },
   data() {
     return {

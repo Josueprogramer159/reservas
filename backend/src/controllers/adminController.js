@@ -3,6 +3,46 @@ import pool from '../db/database.js';
 import { HORARIOS_DISPONIBLES } from '../constants/horarios.js';
 import { getReservationConfig, saveReservationConfig } from '../utils/reservationConfig.js';
 
+export const registrarAdmin = async (req, res) => {
+  try {
+    const { nombre, email, password } = req.body;
+
+    const faltantes = [];
+    if (!nombre?.trim()) faltantes.push('nombre');
+    if (!email?.trim()) faltantes.push('correo');
+    if (!password) faltantes.push('contraseña');
+
+    if (faltantes.length > 0) {
+      return res.status(400).json({ success: false, message: `Campos obligatorios faltantes: ${faltantes.join(', ')}` });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, message: 'El correo no es válido' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    const existe = await pool.query('SELECT id FROM administradores WHERE email = $1', [email.trim()]);
+    if (existe.rows.length > 0) {
+      return res.status(400).json({ success: false, message: 'Ya existe un administrador con ese correo' });
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      `INSERT INTO administradores (nombre, email, password, rol, activo) VALUES ($1, $2, $3, 'admin', true) RETURNING id, nombre, email`,
+      [nombre.trim(), email.trim(), hash]
+    );
+
+    res.status(201).json({ success: true, message: 'Administrador registrado correctamente', admin: result.rows[0] });
+  } catch (error) {
+    console.error('Error al registrar admin:', error);
+    res.status(500).json({ success: false, message: 'Error al registrar el administrador' });
+  }
+};
+
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -143,5 +183,68 @@ export const updateReservationSettings = async (req, res) => {
   } catch (error) {
     console.error('Error al actualizar configuración de reserva:', error);
     res.status(500).json({ success: false, message: 'Error al actualizar la configuración de reservas' });
+  }
+};
+
+export const listarReservasAdmin = async (req, res) => {
+  try {
+    const { busqueda, fecha } = req.query;
+
+    let query = `
+      SELECT r.id, r.fecha, r.horario, r.estado, r.fecha_creacion,
+             u.id AS usuario_id, u.nombre AS usuario_nombre, u.email AS usuario_email,
+             e.id AS espacio_id, e.nombre AS espacio_nombre, e.tipo AS espacio_tipo, e.ubicacion AS espacio_ubicacion
+      FROM reservas r
+      JOIN usuarios u ON u.id = r.usuario_id
+      JOIN espacios e ON e.id = r.espacio_id
+      WHERE r.estado = 'confirmado'
+    `;
+    const params = [];
+
+    if (busqueda?.trim()) {
+      params.push(`%${busqueda.trim()}%`);
+      query += ` AND (u.nombre ILIKE $${params.length} OR u.email ILIKE $${params.length} OR e.nombre ILIKE $${params.length})`;
+    }
+
+    if (fecha?.trim()) {
+      params.push(fecha.trim());
+      query += ` AND r.fecha = $${params.length}`;
+    }
+
+    query += ' ORDER BY r.fecha DESC, r.horario ASC';
+
+    const result = await pool.query(query, params);
+
+    res.json({ success: true, reservas: result.rows, total: result.rows.length });
+  } catch (error) {
+    console.error('Error al listar reservas (admin):', error);
+    res.status(500).json({ success: false, message: 'Error al consultar las reservas' });
+  }
+};
+
+export const cancelarReservaAdmin = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const check = await pool.query('SELECT id, estado, espacio_id FROM reservas WHERE id = $1', [id]);
+
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'La reserva no existe' });
+    }
+
+    if (check.rows[0].estado === 'cancelado') {
+      return res.status(409).json({ success: false, message: 'Esta reserva ya fue cancelada previamente' });
+    }
+
+    await pool.query(`UPDATE reservas SET estado = 'cancelado' WHERE id = $1`, [id]);
+
+    res.json({
+      success: true,
+      message: 'Reserva cancelada correctamente. El espacio vuelve a estar disponible.',
+      espacio_id: check.rows[0].espacio_id
+    });
+  } catch (error) {
+    console.error('Error al cancelar reserva (admin):', error);
+    res.status(500).json({ success: false, message: 'Error al cancelar la reserva' });
   }
 };

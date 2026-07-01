@@ -24,8 +24,9 @@ export default {
   },
   computed: {
     isDashboard() {
-      // Oculta Navbar y Footer si la ruta actual requiere autenticación (ej. /dashboard o /admin-dashboard)
-      return this.$route.meta && this.$route.meta.requiresAuth === true;
+      const rutasSinNav = ['/dashboard', '/admin-dashboard', '/invitado', '/admin-reportes'];
+      return (this.$route.meta && this.$route.meta.requiresAuth === true) ||
+             rutasSinNav.includes(this.$route.path);
     }
   }
 }

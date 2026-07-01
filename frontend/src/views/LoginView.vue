@@ -27,7 +27,12 @@
 
           <!-- Contraseña -->
           <div class="mb-6">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Contraseña</label>
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-semibold text-slate-700">Contraseña</label>
+              <router-link to="/recuperar-password" class="text-xs text-[#003087] font-semibold hover:underline">
+                ¿Olvidaste tu contraseña?
+              </router-link>
+            </div>
             <input 
               v-model="password"
               type="password"

@@ -4,3 +4,10 @@ export const requireUserAuth = (req, res, next) => {
   }
   next();
 };
+
+export const requireAdminAuth = (req, res, next) => {
+  if (!req.session.adminId || req.session.role !== 'admin') {
+    return res.status(401).json({ success: false, message: 'Acceso restringido a administradores' });
+  }
+  next();
+};

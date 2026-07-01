@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import espaciosRoutes from './routes/espacios.js';
 import reservasRoutes from './routes/reservas.js';
+import reportesRoutes from './routes/reportes.js';
 import { getDbErrorMessage } from './utils/dbError.js';
 
 const app = express();
@@ -46,6 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/espacios', espaciosRoutes);
 app.use('/api/reservas', reservasRoutes);
+app.use('/api/admin/reportes', reportesRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

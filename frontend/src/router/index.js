@@ -6,6 +6,9 @@ import DashboardView from '../views/DashboardView.vue'
 import AdminLoginView from '../views/AdminLoginView.vue'
 import AdminDashboardView from '../views/AdminDashboardView.vue'
 import SpaceDetailView from '../views/SpaceDetailView.vue'
+import GuestDashboardView from '../views/GuestDashboardView.vue'
+import RecuperarPasswordView from '../views/RecuperarPasswordView.vue'
+import AdminReportesView from '../views/AdminReportesView.vue'
 import { reactive } from 'vue'
 
 // Estado de sesión reactivo y compartido
@@ -90,8 +93,7 @@ const routes = [
   {
     path: '/espacios/:id',
     name: 'SpaceDetail',
-    component: SpaceDetailView,
-    meta: { requiresAuth: true, role: 'user' }
+    component: SpaceDetailView
   },
   { 
     path: '/admin-login', 
@@ -103,6 +105,23 @@ const routes = [
     path: '/admin-dashboard', 
     name: 'AdminDashboard', 
     component: AdminDashboardView,
+    meta: { requiresAuth: true, role: 'admin' }
+  },
+  {
+    path: '/invitado',
+    name: 'GuestDashboard',
+    component: GuestDashboardView
+  },
+  {
+    path: '/recuperar-password',
+    name: 'RecuperarPassword',
+    component: RecuperarPasswordView,
+    meta: { guestOnly: true }
+  },
+  {
+    path: '/admin-reportes',
+    name: 'AdminReportes',
+    component: AdminReportesView,
     meta: { requiresAuth: true, role: 'admin' }
   },
   // Redirección para cualquier ruta no coincidente

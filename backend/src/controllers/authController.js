@@ -129,3 +129,64 @@ export const getProfile = (req, res) => {
     }
   });
 };
+
+// Paso 1: verificar que el correo existe
+export const verificarCorreo = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email?.trim()) {
+      return res.status(400).json({ success: false, message: 'El correo electrónico es obligatorio' });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ success: false, message: 'El formato del correo electrónico no es válido' });
+    }
+
+    const result = await pool.query('SELECT id, nombre FROM usuarios WHERE email = $1', [email.trim()]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'No existe una cuenta asociada a ese correo electrónico' });
+    }
+
+    res.json({ success: true, message: 'Correo verificado. Puedes establecer tu nueva contraseña.', nombre: result.rows[0].nombre });
+  } catch (error) {
+    console.error('Error al verificar correo:', error);
+    res.status(500).json({ success: false, message: 'Error al verificar el correo' });
+  }
+};
+
+// Paso 2: restablecer la contraseña
+export const restablecerPassword = async (req, res) => {
+  try {
+    const { email, password, confirmPassword } = req.body;
+
+    if (!email?.trim() || !password || !confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Todos los campos son obligatorios' });
+    }
+
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ success: false, message: 'El formato del correo electrónico no es válido' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 8 caracteres' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Las contraseñas no coinciden' });
+    }
+
+    const result = await pool.query('SELECT id FROM usuarios WHERE email = $1', [email.trim()]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'No existe una cuenta asociada a ese correo electrónico' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await pool.query('UPDATE usuarios SET password = $1 WHERE email = $2', [hashedPassword, email.trim()]);
+
+    res.json({ success: true, message: 'Contraseña actualizada correctamente. Ya puedes iniciar sesión con tu nueva contraseña.' });
+  } catch (error) {
+    console.error('Error al restablecer contraseña:', error);
+    res.status(500).json({ success: false, message: 'Error al restablecer la contraseña' });
+  }
+};
