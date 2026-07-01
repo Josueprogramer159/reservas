@@ -71,7 +71,7 @@ export const login = async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, nombre, email, password FROM usuarios WHERE email = $1',
+      'SELECT id, nombre, email, password, activo FROM usuarios WHERE email = $1',
       [email.trim()]
     );
 
@@ -83,6 +83,13 @@ export const login = async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    if (!user.activo) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tu cuenta ha sido desactivada. Contacta al administrador.'
+      });
+    }
 
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {

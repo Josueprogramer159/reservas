@@ -381,24 +381,211 @@
       </div>
     </div>
 
-    <!-- TAB: USUARIOS -->
-    <div v-if="activeTab === 'usuarios'" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-      <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center space-x-2"><Users class="w-5 h-5 text-[#003087]" /><span>Usuarios Registrados</span></h3>
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead><tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-semibold">
-            <th class="py-3 px-4">ID</th><th class="py-3 px-4">Nombre</th><th class="py-3 px-4">Email</th><th class="py-3 px-4">Fecha de Registro</th>
-          </tr></thead>
-          <tbody>
-            <tr v-for="user in users" :key="user.id" class="border-b border-slate-50 hover:bg-slate-50/50 text-sm text-slate-700">
-              <td class="py-3.5 px-4 font-semibold text-slate-900">#{{ user.id }}</td>
-              <td class="py-3.5 px-4">{{ user.nombre }}</td>
-              <td class="py-3.5 px-4 text-[#003087] font-medium">{{ user.email }}</td>
-              <td class="py-3.5 px-4 text-slate-500">{{ formatDate(user.fecha_registro) }}</td>
-            </tr>
-            <tr v-if="users.length === 0"><td colspan="4" class="py-8 text-center text-slate-400">Ningún usuario registrado.</td></tr>
-          </tbody>
-        </table>
+    <!-- TAB: GESTIÓN DE USUARIOS HU10 -->
+    <div v-if="activeTab === 'usuarios'" class="space-y-6">
+
+      <!-- Toast -->
+      <div v-if="toastMsg" class="p-3.5 rounded-xl text-sm font-medium" :class="toastType === 'ok' ? 'bg-emerald-50 border border-emerald-100 text-emerald-700' : 'bg-red-50 border border-red-100 text-red-700'">{{ toastMsg }}</div>
+
+      <!-- Filtros -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Gestión de Usuarios</h3>
+            <p class="text-xs text-slate-500 mt-0.5">{{ usuariosGestion.length }} usuario{{ usuariosGestion.length !== 1 ? 's' : '' }} encontrado{{ usuariosGestion.length !== 1 ? 's' : '' }}</p>
+          </div>
+          <button @click="fetchUsuariosGestion" class="text-sm font-semibold text-[#003087] hover:bg-blue-50 px-4 py-2 rounded-xl transition">🔄 Actualizar</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="sm:col-span-1">
+            <label class="block text-xs font-bold text-slate-400 mb-1">Buscar por nombre o email</label>
+            <input v-model="busquedaUsuarios" @input="fetchUsuariosGestion" type="text" class="form-input text-sm" placeholder="Ej: Juan, juan@email.com...">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">Filtrar por rol</label>
+            <select v-model="filtroRol" @change="fetchUsuariosGestion" class="form-input text-sm">
+              <option value="">Todos los roles</option>
+              <option value="usuario">Usuario</option>
+              <option value="admin">Admin</option>
+              <option value="invitado">Invitado</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 mb-1">Filtrar por estado</label>
+            <select v-model="filtroEstado" @change="fetchUsuariosGestion" class="form-input text-sm">
+              <option value="">Todos</option>
+              <option value="activo">Activos</option>
+              <option value="inactivo">Inactivos</option>
+            </select>
+          </div>
+        </div>
+        <div v-if="busquedaUsuarios || filtroRol || filtroEstado" class="flex justify-end">
+          <button @click="busquedaUsuarios=''; filtroRol=''; filtroEstado=''; fetchUsuariosGestion()" class="text-xs text-slate-400 hover:text-red-500 font-semibold transition">✕ Limpiar filtros</button>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-semibold bg-slate-50">
+                <th class="py-3 px-4">ID</th>
+                <th class="py-3 px-4">Nombre</th>
+                <th class="py-3 px-4">Email</th>
+                <th class="py-3 px-4">Rol</th>
+                <th class="py-3 px-4">Estado</th>
+                <th class="py-3 px-4">Registro</th>
+                <th class="py-3 px-4 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loadingUsuarios">
+                <td colspan="7" class="py-12 text-center text-slate-400">
+                  <span class="w-4 h-4 border-2 border-[#003087] border-t-transparent rounded-full animate-spin inline-block mr-2"></span>Cargando...
+                </td>
+              </tr>
+              <tr v-else-if="usuariosGestion.length === 0">
+                <td colspan="7" class="py-14 text-center">
+                  <p class="text-3xl mb-2">👤</p>
+                  <p class="font-bold text-slate-500">Sin usuarios encontrados</p>
+                  <p class="text-xs text-slate-400 mt-1">{{ busquedaUsuarios || filtroRol || filtroEstado ? 'Prueba con otros filtros.' : 'No hay usuarios registrados.' }}</p>
+                </td>
+              </tr>
+              <tr v-for="u in usuariosGestion" :key="u.id" class="border-b border-slate-50 hover:bg-slate-50/50 transition text-sm text-slate-700"
+                :class="!u.activo ? 'opacity-60' : ''">
+                <td class="py-3.5 px-4 text-xs font-semibold text-slate-400">#{{ u.id }}</td>
+                <td class="py-3.5 px-4 font-semibold text-slate-900">{{ u.nombre }}</td>
+                <td class="py-3.5 px-4 text-[#003087] font-medium text-xs">{{ u.email }}</td>
+                <td class="py-3.5 px-4">
+                  <span class="px-2.5 py-1 rounded-full text-xs font-bold"
+                    :class="u.rol === 'admin' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
+                            u.rol === 'invitado' ? 'bg-slate-100 text-slate-500' :
+                            'bg-blue-50 text-[#003087]'">
+                    {{ u.rol }}
+                  </span>
+                </td>
+                <td class="py-3.5 px-4">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+                    :class="u.activo ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
+                    <span class="w-1.5 h-1.5 rounded-full" :class="u.activo ? 'bg-emerald-500' : 'bg-red-500'"></span>
+                    {{ u.activo ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td class="py-3.5 px-4 text-xs text-slate-400">{{ formatDate(u.fecha_registro) }}</td>
+                <td class="py-3.5 px-4">
+                  <div class="flex items-center justify-center gap-1.5">
+                    <button @click="abrirRolModal(u)" class="p-1.5 text-[#003087] hover:bg-blue-50 rounded-lg transition" title="Cambiar rol">
+                      <Pencil class="w-3.5 h-3.5" />
+                    </button>
+                    <button @click="abrirEstadoModal(u)" class="p-1.5 rounded-lg transition"
+                      :class="u.activo ? 'text-red-500 hover:bg-red-50' : 'text-emerald-600 hover:bg-emerald-50'"
+                      :title="u.activo ? 'Desactivar cuenta' : 'Activar cuenta'">
+                      <component :is="u.activo ? 'UserX' : 'UserCheck'" class="w-3.5 h-3.5" />
+                    </button>
+                    <button @click="verAuditoria(u)" class="p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition" title="Ver historial">
+                      <ClipboardList class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CAMBIAR ROL -->
+    <div v-if="showRolModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden">
+        <div class="h-1.5 bg-[#003087]"></div>
+        <div class="p-6 space-y-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-[#003087] flex items-center justify-center"><Pencil class="w-5 h-5" /></div>
+            <div><h3 class="font-bold text-slate-900">Cambiar Rol</h3><p class="text-xs text-slate-400">{{ usuarioEditandoRol?.nombre }}</p></div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-1">Nuevo rol</label>
+            <select v-model="nuevoRol" class="form-input text-sm">
+              <option value="usuario">Usuario</option>
+              <option value="admin">Admin</option>
+              <option value="invitado">Invitado</option>
+            </select>
+          </div>
+          <div v-if="rolError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs">{{ rolError }}</div>
+          <div class="flex gap-3">
+            <button @click="showRolModal=false" class="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-slate-50 transition">Cancelar</button>
+            <button @click="confirmarCambioRol" :disabled="cambiandoRol || nuevoRol === usuarioEditandoRol?.rol"
+              class="flex-1 bg-[#003087] text-white font-bold py-2.5 rounded-xl text-sm hover:bg-blue-800 transition disabled:opacity-50">
+              {{ cambiandoRol ? 'Guardando...' : 'Confirmar cambio' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL CAMBIAR ESTADO -->
+    <div v-if="showEstadoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full overflow-hidden">
+        <div class="h-1.5" :class="usuarioEditandoEstado?.activo ? 'bg-red-500' : 'bg-emerald-500'"></div>
+        <div class="p-6 space-y-4 text-center">
+          <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto"
+            :class="usuarioEditandoEstado?.activo ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'">
+            <component :is="usuarioEditandoEstado?.activo ? 'UserX' : 'UserCheck'" class="w-7 h-7" />
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">{{ usuarioEditandoEstado?.activo ? 'Desactivar' : 'Activar' }} Usuario</h3>
+            <p class="text-sm text-slate-500 mt-1">
+              ¿Confirmas {{ usuarioEditandoEstado?.activo ? 'desactivar' : 'activar' }} la cuenta de
+              <span class="font-semibold text-slate-800">{{ usuarioEditandoEstado?.nombre }}</span>?
+            </p>
+            <p v-if="usuarioEditandoEstado?.activo" class="text-xs text-slate-400 mt-2">El usuario no podrá iniciar sesión. Sus reservas anteriores se conservarán.</p>
+          </div>
+          <div v-if="estadoError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs">{{ estadoError }}</div>
+          <div class="flex gap-3">
+            <button @click="showEstadoModal=false" class="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-slate-50 transition">Cancelar</button>
+            <button @click="confirmarCambioEstado" :disabled="cambiandoEstado"
+              class="flex-1 text-white font-bold py-2.5 rounded-xl text-sm transition disabled:opacity-50"
+              :class="usuarioEditandoEstado?.activo ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'">
+              {{ cambiandoEstado ? 'Procesando...' : (usuarioEditandoEstado?.activo ? 'Sí, desactivar' : 'Sí, activar') }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODAL AUDITORÍA -->
+    <div v-if="showAuditoriaModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden">
+        <div class="h-1.5 bg-slate-700"></div>
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-5">
+            <div>
+              <h3 class="font-bold text-slate-900">Historial de Auditoría</h3>
+              <p class="text-xs text-slate-400 mt-0.5">{{ auditoriaUsuario?.nombre }} — {{ auditoriaUsuario?.email }}</p>
+            </div>
+            <button @click="showAuditoriaModal=false" class="p-2 hover:bg-slate-100 rounded-lg transition text-slate-400">✕</button>
+          </div>
+          <div v-if="auditoriaData.length === 0" class="text-center py-8 text-slate-400">
+            <p class="text-2xl mb-2">📋</p>Sin registros de auditoría.
+          </div>
+          <div v-else class="space-y-3 max-h-80 overflow-y-auto pr-1">
+            <div v-for="a in auditoriaData" :key="a.id"
+              class="flex items-start gap-3 p-3 rounded-xl border border-slate-100 bg-slate-50 text-sm">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-xs font-bold"
+                :class="a.accion === 'DESACTIVACION' ? 'bg-red-100 text-red-600' :
+                        a.accion === 'ACTIVACION' ? 'bg-emerald-100 text-emerald-600' :
+                        'bg-blue-100 text-blue-600'">
+                {{ a.accion === 'DESACTIVACION' ? '🔴' : a.accion === 'ACTIVACION' ? '🟢' : '✏️' }}
+              </div>
+              <div class="flex-grow">
+                <p class="font-semibold text-slate-800 text-xs">{{ a.accion.replace('_', ' ') }}</p>
+                <p class="text-xs text-slate-500 mt-0.5">{{ a.detalle }}</p>
+                <p class="text-xs text-slate-400 mt-1">Admin: {{ a.admin_nombre }} · {{ new Date(a.fecha).toLocaleString('es-ES') }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -464,8 +651,48 @@
               <textarea v-model="form.descripcion" class="form-input text-sm" rows="2" placeholder="Descripción breve del espacio..."></textarea>
             </div>
             <div class="sm:col-span-2">
-              <label class="block text-xs font-bold text-slate-500 mb-1">URL de Imagen</label>
-              <input v-model="form.imagen" type="text" class="form-input text-sm" placeholder="https://..." maxlength="500">
+              <label class="block text-xs font-bold text-slate-500 mb-1">Imagen del Espacio</label>
+
+              <!-- Zona de carga -->
+              <div
+                class="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition hover:border-[#003087] hover:bg-blue-50/30"
+                :class="form.imagen ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200'"
+                @click="$refs.inputImagen.click()"
+                @dragover.prevent
+                @drop.prevent="onDropImagen"
+              >
+                <!-- Previsualización -->
+                <div v-if="form.imagen" class="relative">
+                  <img :src="form.imagen" :alt="form.nombre" class="w-full h-40 object-cover rounded-lg mx-auto">
+                  <button type="button" @click.stop="quitarImagen"
+                    class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition shadow">
+                    ✕
+                  </button>
+                  <p class="text-xs text-emerald-600 font-semibold mt-2">✓ Imagen cargada</p>
+                </div>
+                <!-- Sin imagen -->
+                <div v-else class="py-4 space-y-2">
+                  <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto text-2xl">🖼️</div>
+                  <p class="text-sm font-semibold text-slate-600">Haz clic o arrastra una imagen aquí</p>
+                  <p class="text-xs text-slate-400">JPG, PNG o WEBP · Máx. 5 MB</p>
+                </div>
+              </div>
+
+              <!-- Input oculto -->
+              <input
+                ref="inputImagen"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                class="hidden"
+                @change="onSeleccionarImagen"
+              >
+
+              <!-- Estado subida -->
+              <p v-if="subiendoImagen" class="text-xs text-[#003087] font-semibold mt-2 flex items-center gap-1.5">
+                <span class="w-3 h-3 border-2 border-[#003087] border-t-transparent rounded-full animate-spin"></span>
+                Subiendo imagen...
+              </p>
+              <p v-if="imagenError" class="text-xs text-red-500 font-semibold mt-1.5">{{ imagenError }}</p>
             </div>
             <div class="sm:col-span-2">
               <label class="block text-xs font-bold text-slate-500 mb-1">Información Complementaria</label>
@@ -506,14 +733,14 @@
 </template>
 
 <script>
-import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2 } from 'lucide-vue-next';
+import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck as UserCheckIcon, ClipboardList } from 'lucide-vue-next';
 import { authState } from '../router';
 
 const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', info_complementaria: '' };
 
 export default {
   name: 'AdminDashboardView',
-  components: { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2 },
+  components: { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck: UserCheckIcon, ClipboardList },
   data() {
     return {
       state: authState,
@@ -522,8 +749,8 @@ export default {
         { key: 'espacios',       label: '🏛️ Gestión de Espacios' },
         { key: 'disponibilidad', label: '🔛 Control de Disponibilidad' },
         { key: 'reservas',       label: '📋 Reservas Activas' },
+        { key: 'usuarios',       label: '👤 Gestión de Usuarios' },
         { key: 'configuracion',  label: '⚙️ Configuración de Reservas' },
-        { key: 'usuarios',       label: '👤 Usuarios' },
         { key: 'admins',         label: '🛡️ Administradores' }
       ],
       users: [], admins: [], reservasActivas: 0,
@@ -533,6 +760,8 @@ export default {
       form: { ...FORM_VACIO },
       formError: '', guardando: false,
       espacioEditandoId: null,
+      imagenError: false,
+      subiendoImagen: false,
       // Modal eliminar
       showDeleteModal: false, espacioAEliminar: null,
       deleteError: '', eliminando: false,
@@ -543,6 +772,14 @@ export default {
       busquedaReservas: '', filtroFechaReservas: '',
       reservaACancelar: null, showCancelModal: false,
       cancelando: false, cancelError: '',
+      // Gestión de usuarios HU10
+      usuariosGestion: [], loadingUsuarios: false,
+      busquedaUsuarios: '', filtroRol: '', filtroEstado: '',
+      showRolModal: false, usuarioEditandoRol: null, nuevoRol: '',
+      cambiandoRol: false, rolError: '',
+      showEstadoModal: false, usuarioEditandoEstado: null,
+      cambiandoEstado: false, estadoError: '',
+      showAuditoriaModal: false, auditoriaData: [], auditoriaUsuario: null,
       // Disponibilidad
       filtroDisp: 'todos',
       filtrosDisp: [
@@ -573,6 +810,7 @@ export default {
     this.fetchDashboardData();
     this.fetchEspacios();
     this.fetchReservas();
+    this.fetchUsuariosGestion();
   },
   methods: {
     async fetchDashboardData() {
@@ -602,12 +840,16 @@ export default {
       this.editando = false;
       this.form = { ...FORM_VACIO };
       this.formError = '';
+      this.imagenError = false;
+      this.subiendoImagen = false;
       this.espacioEditandoId = null;
       this.showEspacioModal = true;
     },
     abrirModalEditar(esp) {
       this.editando = true;
       this.espacioEditandoId = esp.id;
+      this.imagenError = false;
+      this.subiendoImagen = false;
       this.form = {
         nombre: esp.nombre, tipo: esp.tipo, capacidad: esp.capacidad,
         ubicacion: esp.ubicacion, descripcion: esp.descripcion || '',
@@ -617,6 +859,46 @@ export default {
       this.showEspacioModal = true;
     },
     cerrarModal() { this.showEspacioModal = false; this.formError = ''; },
+    async subirImagen(file) {
+      if (!file) return;
+      const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!allowed.includes(file.type)) {
+        this.imagenError = 'Solo se permiten imágenes JPG, PNG o WEBP.'; return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        this.imagenError = 'La imagen no puede superar 5 MB.'; return;
+      }
+      this.subiendoImagen = true;
+      this.imagenError = false;
+      try {
+        const fd = new FormData();
+        fd.append('imagen', file);
+        const res = await fetch('/api/upload/imagen', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.success) {
+          this.form.imagen = data.url;
+        } else {
+          this.imagenError = data.message || 'Error al subir la imagen';
+        }
+      } catch {
+        this.imagenError = 'Error de conexión al subir la imagen';
+      } finally {
+        this.subiendoImagen = false;
+      }
+    },
+    onSeleccionarImagen(e) {
+      const file = e.target.files[0];
+      if (file) this.subirImagen(file);
+      e.target.value = '';
+    },
+    onDropImagen(e) {
+      const file = e.dataTransfer.files[0];
+      if (file) this.subirImagen(file);
+    },
+    quitarImagen() {
+      this.form.imagen = '';
+      this.imagenError = false;
+    },
     async guardarEspacio() {
       this.guardando = true; this.formError = '';
       try {
@@ -733,6 +1015,71 @@ export default {
       this.busquedaReservas = '';
       this.filtroFechaReservas = '';
       this.fetchReservas();
+    },
+    // ── HU10: Gestión de usuarios ──────────────────────────
+    async fetchUsuariosGestion() {
+      this.loadingUsuarios = true;
+      try {
+        const p = new URLSearchParams();
+        if (this.busquedaUsuarios.trim()) p.append('busqueda', this.busquedaUsuarios.trim());
+        if (this.filtroRol)    p.append('rol',    this.filtroRol);
+        if (this.filtroEstado) p.append('estado', this.filtroEstado);
+        const res = await fetch(`/api/admin/usuarios?${p}`);
+        const data = await res.json();
+        if (data.success) this.usuariosGestion = data.usuarios || [];
+      } catch (e) { console.error(e); }
+      finally { this.loadingUsuarios = false; }
+    },
+    abrirRolModal(u) {
+      this.usuarioEditandoRol = u;
+      this.nuevoRol = u.rol;
+      this.rolError = '';
+      this.showRolModal = true;
+    },
+    async confirmarCambioRol() {
+      this.cambiandoRol = true; this.rolError = '';
+      try {
+        const res = await fetch(`/api/admin/usuarios/${this.usuarioEditandoRol.id}/rol`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rol: this.nuevoRol })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.showRolModal = false;
+          this.mostrarToast(data.message, 'ok');
+          await this.fetchUsuariosGestion();
+        } else { this.rolError = data.message; }
+      } catch { this.rolError = 'Error de conexión'; }
+      finally { this.cambiandoRol = false; }
+    },
+    abrirEstadoModal(u) {
+      this.usuarioEditandoEstado = u;
+      this.estadoError = '';
+      this.showEstadoModal = true;
+    },
+    async confirmarCambioEstado() {
+      this.cambiandoEstado = true; this.estadoError = '';
+      try {
+        const res = await fetch(`/api/admin/usuarios/${this.usuarioEditandoEstado.id}/estado`, { method: 'PATCH' });
+        const data = await res.json();
+        if (data.success) {
+          this.showEstadoModal = false;
+          this.mostrarToast(data.message, 'ok');
+          await this.fetchUsuariosGestion();
+          await this.fetchDashboardData();
+        } else { this.estadoError = data.message; }
+      } catch { this.estadoError = 'Error de conexión'; }
+      finally { this.cambiandoEstado = false; }
+    },
+    async verAuditoria(u) {
+      this.auditoriaUsuario = u;
+      this.auditoriaData = [];
+      this.showAuditoriaModal = true;
+      try {
+        const res = await fetch(`/api/admin/usuarios/${u.id}/auditoria`);
+        const data = await res.json();
+        if (data.success) this.auditoriaData = data.auditoria || [];
+      } catch (e) { console.error(e); }
     },
     async handleLogout() {
       try {
