@@ -1,6 +1,7 @@
 import pool from '../db/database.js';
 import { getReservationConfig } from '../utils/reservationConfig.js';
 import { generarCodigoQR } from './asistenciaController.js';
+import { sendNotificationToUser } from './notificationController.js';
 
 export const crearReserva = async (req, res) => {
   try {
@@ -65,9 +66,20 @@ export const crearReserva = async (req, res) => {
       console.error('⚠️ Error al generar QR (pero la reserva fue creada):', qrError.message);
     }
 
+    // Enviar notificación de reserva confirmada
+    try {
+      await sendNotificationToUser(usuarioId, {
+        title: '✅ Reserva Confirmada',
+        body: `Tu reserva para ${espacio.nombre} ha sido confirmada.`,
+        data: { url: '/dashboard' }
+      });
+    } catch (notifError) {
+      console.error('⚠️ Error al enviar notificación:', notifError.message);
+    }
+
     res.status(201).json({
       success: true,
-      message: 'Reserva confirmada exitosamente',
+      message: 'Reserva Exitosa',
       reserva: {
         ...result.rows[0],
         espacio_nombre: espacio.nombre,
@@ -127,6 +139,21 @@ export const cancelarReserva = async (req, res) => {
       `UPDATE reservas SET estado = 'cancelado' WHERE id = $1`,
       [id]
     );
+
+    // Obtener nombre del espacio para la notificación
+    const espacio = await pool.query('SELECT nombre FROM espacios WHERE id = $1', [reservaCheck.rows[0].espacio_id]);
+    const espacioNombre = espacio.rows[0]?.nombre || 'tu espacio';
+
+    // Enviar notificación de cancelación
+    try {
+      await sendNotificationToUser(usuarioId, {
+        title: '❌ Reserva Cancelada',
+        body: `Tu reserva para ${espacioNombre} ha sido cancelada.`,
+        data: { url: '/dashboard' }
+      });
+    } catch (notifError) {
+      console.error('⚠️ Error al enviar notificación de cancelación:', notifError.message);
+    }
 
     res.json({
       success: true,

@@ -13,11 +13,12 @@ import reservasRoutes from './routes/reservas.js';
 import reportesRoutes from './routes/reportes.js';
 import uploadsRoutes from './routes/uploads.js';
 import asistenciasRoutes from './routes/asistencias.js';
+import notificationsRoutes from './routes/notifications.js';
 import { getDbErrorMessage } from './utils/dbError.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const port = process.env.PORT || 3002;
+const port = process.env.PORT || 3002; // Port changed for notifications
 
 const PgSession = pgSession(session);
 
@@ -58,6 +59,7 @@ app.use('/api/reservas', reservasRoutes);
 app.use('/api/admin/reportes', reportesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/upload', uploadsRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

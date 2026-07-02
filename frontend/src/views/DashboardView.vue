@@ -143,12 +143,19 @@
           </div>
         </div>
 
-        <div v-if="toastMessage" class="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium flex items-center justify-between gap-3">
-          <span>{{ toastMessage }}</span>
+        <div v-if="toastMessage" class="fixed top-4 right-4 z-50 p-4 bg-white rounded-2xl shadow-xl border border-emerald-100 text-sm font-medium flex items-center gap-3">
+          <div class="flex-shrink-0 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+            <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <p class="text-emerald-800 font-semibold">{{ toastMessage }}</p>
+          </div>
           <button v-if="ultimaReservaId" @click="descargarCalendarioById(ultimaReservaId)"
             class="flex-shrink-0 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95">
             <CalendarPlus class="w-3.5 h-3.5" />
-            Agregar a mi calendario
+            Agregar a Calendario
           </button>
         </div>
 
@@ -454,6 +461,24 @@
               <p class="text-sm font-semibold text-slate-800 mt-1.5">#{{ state.user?.id || '0' }}</p>
             </div>
           </div>
+          <div class="pt-6 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <h5 class="text-sm font-bold text-slate-900">Notificaciones Push</h5>
+                <p class="text-xs text-slate-500 mt-0.5">Recibe alertas sobre reservas y recordatorios</p>
+              </div>
+              <button 
+                @click="notificacionesActivas = !notificacionesActivas; updateNotificationPreferences()"
+                class="relative w-12 h-6 rounded-full transition-colors duration-200"
+                :class="notificacionesActivas ? 'bg-[#003087]' : 'bg-slate-200'"
+              >
+                <span 
+                  class="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                  :class="notificacionesActivas ? 'translate-x-6' : 'translate-x-0'"
+                ></span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </main>
@@ -509,6 +534,7 @@ import {
 } from 'lucide-vue-next';
 import { authState } from '../router';
 import QRScannerModal from '../components/QRScannerModal.vue';
+import notificationService from '../services/notificationService';
 
 export default {
   name: 'DashboardView',
@@ -551,7 +577,9 @@ export default {
       mesActual: new Date().getMonth(),
       anioActual: new Date().getFullYear(),
       celdasCalendario: [],
-      eventoSeleccionado: null
+      eventoSeleccionado: null,
+      // Notificaciones
+      notificacionesActivas: true
     };
   },
   computed: {
@@ -595,8 +623,9 @@ export default {
     }
   },
   async mounted() {
-    await Promise.all([this.fetchSpaces(), this.fetchMyReservations()]);
+    await Promise.all([this.fetchSpaces(), this.fetchMyReservations(), this.loadNotificationPreferences()]);
     this.construirCalendario();
+    this.initializeNotifications();
   },
   watch: {
     myReservations() {
@@ -604,6 +633,55 @@ export default {
     }
   },
   methods: {
+    async initializeNotifications() {
+      try {
+        const initialized = await notificationService.init();
+        if (!initialized) return;
+
+        const permissionGranted = await notificationService.requestPermission();
+        if (!permissionGranted) return;
+
+        const subscription = await notificationService.subscribeToPush();
+        if (subscription) {
+          await notificationService.saveSubscriptionToBackend(subscription);
+        }
+      } catch (err) {
+        console.error('Error inicializando notificaciones:', err);
+      }
+    },
+    async loadNotificationPreferences() {
+      try {
+        const res = await fetch('/api/notifications/preferences', {
+          credentials: 'include'
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.notificacionesActivas = data.notificaciones_activas;
+        }
+      } catch (err) {
+        console.error('Error cargando preferencias de notificaciones:', err);
+      }
+    },
+    async updateNotificationPreferences() {
+      try {
+        const res = await fetch('/api/notifications/preferences', {
+          method: 'PUT',
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            notificaciones_activas: this.notificacionesActivas
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          // Success!
+        }
+      } catch (err) {
+        console.error('Error actualizando preferencias:', err);
+      }
+    },
     async fetchSpaces() {
       this.loadingSpaces = true;
       this.spacesError = '';

@@ -191,7 +191,31 @@ async function initDb() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_qr_codes_reserva ON qr_codes(reserva_id);`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_qr_codes_token ON qr_codes(token_unico);`);
 
-    // 8. Insertar espacios semilla
+    // 8. Añadir columna de notificaciones a usuarios
+    console.log('Actualizando tabla de usuarios con preferencias de notificaciones...');
+    await pool.query(`
+      ALTER TABLE usuarios 
+      ADD COLUMN IF NOT EXISTS notificaciones_activas BOOLEAN DEFAULT true;
+    `);
+
+    // 9. Tabla de suscripciones de notificaciones
+    console.log('Creando tabla de suscripciones de notificaciones...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS user_push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(usuario_id, endpoint)
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON user_push_subscriptions(usuario_id);`);
+
+    // 10. Insertar espacios semilla
     console.log('Insertando espacios semilla...');
     const espaciosSemilla = [
       ['Laboratorio de Computación Avanzada B3', 'Laboratorios', 30, 'Bloque B, Segundo Piso', 'Equipado con 30 ordenadores de alto rendimiento e internet de fibra óptica.', 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80&w=600', 'Incluye proyector, aire acondicionado y acceso WiFi de alta velocidad.'],
