@@ -138,3 +138,82 @@ export const contarReservasActivas = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al consultar reservas activas' });
   }
 };
+
+export const descargarICS = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const usuarioId = req.session.userId;
+
+    const result = await pool.query(
+      `SELECT r.id, r.fecha, r.horario, r.estado, r.fecha_creacion,
+              e.nombre AS espacio_nombre, e.ubicacion AS espacio_ubicacion,
+              e.descripcion AS espacio_descripcion, e.tipo AS espacio_tipo
+       FROM reservas r
+       JOIN espacios e ON e.id = r.espacio_id
+       WHERE r.id = $1 AND r.usuario_id = $2`,
+      [id, usuarioId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Reserva no encontrada' });
+    }
+
+    const reserva = result.rows[0];
+
+    if (reserva.estado !== 'confirmado') {
+      return res.status(400).json({ success: false, message: 'Solo las reservas confirmadas pueden sincronizarse con el calendario' });
+    }
+
+    // Parsear fecha y horario
+    const [horaInicio, horaFin] = reserva.horario.split(' - ').map(h => h.trim());
+    const fechaStr = reserva.fecha.toISOString ? reserva.fecha.toISOString().split('T')[0] : String(reserva.fecha).split('T')[0];
+    const [anio, mes, dia] = fechaStr.split('-');
+
+    const formatHora = (h) => h.replace(':', '') + '00';
+    const dtStart = `${anio}${mes}${dia}T${formatHora(horaInicio)}`;
+    const dtEnd   = `${anio}${mes}${dia}T${formatHora(horaFin)}`;
+    const ahora   = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const uid     = `reserva-${reserva.id}-${Date.now()}@utc.edu`;
+
+    const descripcion = [
+      `Espacio: ${reserva.espacio_nombre}`,
+      `Tipo: ${reserva.espacio_tipo}`,
+      `Ubicación: ${reserva.espacio_ubicacion}`,
+      `Estado: ${reserva.estado}`,
+      `Reservado el: ${new Date(reserva.fecha_creacion).toLocaleDateString('es-ES')}`
+    ].join('\\n');
+
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//ReservaUTC//Sistema de Reservas UTC//ES',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${ahora}`,
+      `DTSTART:${dtStart}`,
+      `DTEND:${dtEnd}`,
+      `SUMMARY:Reserva - ${reserva.espacio_nombre}`,
+      `LOCATION:${reserva.espacio_ubicacion}`,
+      `DESCRIPTION:${descripcion}`,
+      'STATUS:CONFIRMED',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT30M',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:Recordatorio: Reserva en ${reserva.espacio_nombre} en 30 minutos`,
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const filename = `reserva_${reserva.id}_${fechaStr}.ics`;
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(ics);
+
+  } catch (error) {
+    console.error('Error al generar ICS:', error);
+    res.status(500).json({ success: false, message: 'Error al generar el archivo de calendario' });
+  }
+};

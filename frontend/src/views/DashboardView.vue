@@ -30,6 +30,14 @@
             <span>Mis Espacios</span>
           </button>
           <button
+            @click="activeTab = 'calendario'; construirCalendario()"
+            class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+            :class="activeTab === 'calendario' ? 'bg-[#003087] text-white shadow-md shadow-[#003087]/15' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
+          >
+            <CalendarDays class="w-5 h-5" />
+            <span>Mi Calendario</span>
+          </button>
+          <button
             @click="activeTab = 'perfil'"
             class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200"
             :class="activeTab === 'perfil' ? 'bg-[#003087] text-white shadow-md shadow-[#003087]/15' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'"
@@ -62,8 +70,13 @@
           </div>
         </div>
 
-        <div v-if="toastMessage" class="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">
-          {{ toastMessage }}
+        <div v-if="toastMessage" class="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium flex items-center justify-between gap-3">
+          <span>{{ toastMessage }}</span>
+          <button v-if="ultimaReservaId" @click="descargarCalendarioById(ultimaReservaId)"
+            class="flex-shrink-0 flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95">
+            <CalendarPlus class="w-3.5 h-3.5" />
+            Agregar a mi calendario
+          </button>
         </div>
 
         <div v-if="loadingSpaces" class="text-center py-16">
@@ -177,6 +190,14 @@
                   {{ res.estado }}
                 </span>
                 <button
+                  @click="descargarCalendario(res)"
+                  class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg transition duration-200"
+                  title="Agregar a mi calendario"
+                >
+                  <CalendarPlus class="w-4 h-4" />
+                  <span class="hidden sm:inline">Calendario</span>
+                </button>
+                <button
                   @click="cancelReservation(res.id)"
                   class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition duration-200"
                   title="Cancelar Reserva"
@@ -191,6 +212,170 @@
             <h4 class="font-bold text-slate-600">No tienes espacios reservados</h4>
             <p class="text-xs text-slate-400 max-w-xs mx-auto">Dirígete a la pestaña "Reservar Espacios" para realizar tu primera reserva.</p>
             <button @click="activeTab = 'reservas'" class="btn-primary mt-2 text-xs">Reservar Ahora</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MI CALENDARIO -->
+      <div v-else-if="activeTab === 'calendario'" class="space-y-6">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Mi Calendario</h1>
+          <p class="text-sm text-slate-500 mt-1">Vista mensual de tus reservas programadas</p>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <!-- Header del Calendario -->
+          <div class="bg-[#003087] text-white p-6 flex items-center justify-between">
+            <button @click="mesAnterior" class="p-2 hover:bg-white/20 rounded-lg transition">
+              <ChevronLeft class="w-5 h-5" />
+            </button>
+            <h2 class="text-xl font-bold capitalize">{{ nombreMes }} {{ anioActual }}</h2>
+            <button @click="mesSiguiente" class="p-2 hover:bg-white/20 rounded-lg transition">
+              <ChevronRight class="w-5 h-5" />
+            </button>
+          </div>
+
+          <!-- Calendario -->
+          <div class="p-6">
+            <!-- Días de la semana -->
+            <div class="grid grid-cols-7 gap-2 mb-4">
+              <div v-for="dia in ['L', 'M', 'X', 'J', 'V', 'S', 'D']" :key="dia" class="text-center font-bold text-slate-600 text-xs py-2">
+                {{ dia }}
+              </div>
+            </div>
+
+            <!-- Celdas del calendario -->
+            <div class="grid grid-cols-7 gap-2">
+              <div
+                v-for="(celda, idx) in celdasCalendario"
+                :key="idx"
+                class="aspect-square p-2 rounded-xl border-2 flex flex-col items-start justify-start text-xs cursor-pointer transition-all duration-200 relative"
+                :class="[
+                  celda.mesActual
+                    ? 'bg-white border-slate-200 hover:border-[#003087]'
+                    : 'bg-slate-50 border-slate-100',
+                  celda.esHoy ? 'ring-2 ring-[#003087] border-[#003087] bg-blue-50' : ''
+                ]"
+              >
+                <span class="font-bold" :class="celda.mesActual ? 'text-slate-900' : 'text-slate-300'">
+                  {{ celda.dia }}
+                </span>
+                <div v-if="celda.eventos.length > 0" class="mt-1 w-full space-y-0.5">
+                  <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id" class="text-[10px] px-1 py-0.5 rounded truncate" :class="tipoColor(evt.espacio_tipo)">
+                    {{ evt.espacio_nombre }}
+                  </div>
+                  <div v-if="celda.eventos.length > 2" class="text-[10px] text-slate-500 font-medium px-1">
+                    +{{ celda.eventos.length - 2 }} más
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detalle de evento -->
+          <div v-if="eventoSeleccionado" class="bg-slate-50 border-t border-slate-100 p-6">
+            <h3 class="font-bold text-slate-900 mb-3">{{ eventoSeleccionado.espacio_nombre }}</h3>
+            <div class="space-y-2 text-sm">
+              <p><span class="text-slate-500">Fecha:</span> <span class="font-medium">{{ eventoSeleccionado.fecha }}</span></p>
+              <p><span class="text-slate-500">Horario:</span> <span class="font-medium">{{ eventoSeleccionado.horario }}</span></p>
+              <p><span class="text-slate-500">Estado:</span> <span class="font-medium">{{ eventoSeleccionado.estado }}</span></p>
+            </div>
+            <button @click="descargarCalendario(eventoSeleccionado)" class="mt-4 flex items-center gap-2 bg-[#003087] text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-800 transition">
+              <CalendarPlus class="w-4 h-4" />
+              Descargar .ics
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MI CALENDARIO -->
+      <div v-else-if="activeTab === 'calendario'" class="space-y-6">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Mi Calendario</h1>
+          <p class="text-sm text-slate-500 mt-1">Visualiza todas tus reservas en un calendario interactivo</p>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 space-y-6">
+          <!-- Cabecera del Calendario -->
+          <div class="flex items-center justify-between mb-6">
+            <button @click="mesAnterior" class="p-2 hover:bg-slate-100 rounded-lg transition">
+              <ChevronLeft class="w-5 h-5 text-slate-600" />
+            </button>
+            <h2 class="text-xl font-bold text-slate-900 min-w-48 text-center capitalize">
+              {{ nombreMes }} {{ anioActual }}
+            </h2>
+            <button @click="mesSiguiente" class="p-2 hover:bg-slate-100 rounded-lg transition">
+              <ChevronRight class="w-5 h-5 text-slate-600" />
+            </button>
+          </div>
+
+          <!-- Días de la semana -->
+          <div class="grid grid-cols-7 gap-1 mb-2">
+            <div v-for="dia in ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom']" :key="dia"
+              class="h-10 flex items-center justify-center font-bold text-xs text-slate-500 uppercase">
+              {{ dia }}
+            </div>
+          </div>
+
+          <!-- Celdas del calendario -->
+          <div class="grid grid-cols-7 gap-1">
+            <div v-for="(celda, idx) in celdasCalendario" :key="idx"
+              class="aspect-square rounded-lg p-2 cursor-pointer transition-all duration-200 relative"
+              :class="[
+                celda.mesActual
+                  ? celda.esHoy
+                    ? 'bg-[#003087] text-white font-bold'
+                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
+                  : 'bg-slate-100 text-slate-400',
+                celda.eventos.length > 0 ? 'ring-2 ring-emerald-400' : ''
+              ]"
+              @click="celda.eventos.length > 0 && seleccionarEvento(celda.eventos[0])">
+
+              <div class="flex flex-col h-full justify-between">
+                <div class="text-sm font-semibold">{{ celda.dia }}</div>
+                <div v-if="celda.eventos.length > 0" class="flex gap-0.5 flex-wrap">
+                  <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id"
+                    class="w-1.5 h-1.5 rounded-full"
+                    :class="{
+                      'bg-blue-500': evt.espacio_tipo === 'Laboratorios',
+                      'bg-emerald-500': evt.espacio_tipo === 'Canchas',
+                      'bg-purple-500': evt.espacio_tipo === 'Salas'
+                    }"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Detalles del evento seleccionado -->
+          <div v-if="eventoSeleccionado" class="mt-8 pt-6 border-t border-slate-200 space-y-4">
+            <h3 class="font-bold text-slate-900">Evento Seleccionado</h3>
+            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+              <div>
+                <p class="text-xs text-slate-500 font-semibold uppercase">Espacio</p>
+                <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.espacio_nombre }}</p>
+              </div>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <p class="text-xs text-slate-500 font-semibold uppercase">Fecha</p>
+                  <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.fecha }}</p>
+                </div>
+                <div>
+                  <p class="text-xs text-slate-500 font-semibold uppercase">Horario</p>
+                  <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.horario }}</p>
+                </div>
+              </div>
+              <div>
+                <p class="text-xs text-slate-500 font-semibold uppercase">Estado</p>
+                <span class="inline-block px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
+                  {{ eventoSeleccionado.estado }}
+                </span>
+              </div>
+              <button @click="descargarCalendario(eventoSeleccionado)"
+                class="w-full mt-4 flex items-center justify-center gap-2 bg-[#003087] text-white font-semibold py-2.5 rounded-lg hover:bg-blue-800 transition text-sm">
+                <CalendarPlus class="w-4 h-4" />
+                Agregar a mi calendario
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -264,7 +449,8 @@
 <script>
 import {
   CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2,
-  Monitor, Trophy, Video, Users, Loader2
+  Monitor, Trophy, Video, Users, Loader2, CalendarPlus,
+  CalendarDays, ChevronLeft, ChevronRight
 } from 'lucide-vue-next';
 import { authState } from '../router';
 
@@ -272,7 +458,8 @@ export default {
   name: 'DashboardView',
   components: {
     CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2,
-    Monitor, Trophy, Video, Users, Loader2
+    Monitor, Trophy, Video, Users, Loader2, CalendarPlus,
+    CalendarDays, ChevronLeft, ChevronRight
   },
   data() {
     return {
@@ -288,13 +475,24 @@ export default {
       spacesError: '',
       modalError: '',
       toastMessage: '',
-      submitting: false
+      submitting: false,
+      ultimaReservaId: null,
+      // Calendario
+      mesActual: new Date().getMonth(),
+      anioActual: new Date().getFullYear(),
+      celdasCalendario: [],
+      eventoSeleccionado: null
     };
   },
   computed: {
     userInitials() {
       const name = this.state.user?.nombre || 'Usuario';
       return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+    },
+    nombreMes() {
+      return new Date(this.anioActual, this.mesActual, 1)
+        .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+        .split(' ')[0];
     },
     laboratorios() {
       return this.spaces.filter(s => s.tipo === 'Laboratorios');
@@ -315,6 +513,12 @@ export default {
   },
   async mounted() {
     await Promise.all([this.fetchSpaces(), this.fetchMyReservations()]);
+    this.construirCalendario();
+  },
+  watch: {
+    myReservations() {
+      this.construirCalendario();
+    }
   },
   methods: {
     async fetchSpaces() {
@@ -374,6 +578,7 @@ export default {
         const data = await res.json();
         if (data.success) {
           this.showModal = false;
+          this.ultimaReservaId = data.reserva?.id || null;
           this.toastMessage = data.message;
           setTimeout(() => { this.toastMessage = ''; }, 4000);
           await Promise.all([this.fetchSpaces(), this.fetchMyReservations()]);
@@ -404,6 +609,98 @@ export default {
         }
       } catch {
         alert('Error de conexión al cancelar la reserva');
+      }
+    },
+    // ── Calendario ────────────────────────────────────────
+    construirCalendario() {
+      const hoy = new Date();
+      const primerDia = new Date(this.anioActual, this.mesActual, 1);
+      const ultimoDia = new Date(this.anioActual, this.mesActual + 1, 0);
+
+      // Lunes=0 … Domingo=6
+      let inicioSemana = primerDia.getDay() - 1;
+      if (inicioSemana < 0) inicioSemana = 6;
+
+      const celdas = [];
+
+      // Días del mes anterior
+      for (let i = inicioSemana - 1; i >= 0; i--) {
+        const d = new Date(this.anioActual, this.mesActual, -i);
+        celdas.push({ dia: d.getDate(), mesActual: false, fecha: null, eventos: [], esHoy: false });
+      }
+
+      // Días del mes actual
+      for (let d = 1; d <= ultimoDia.getDate(); d++) {
+        const fecha = `${this.anioActual}-${String(this.mesActual + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const eventos = this.myReservations.filter(r => String(r.fecha).split('T')[0] === fecha);
+        const esHoy = hoy.getFullYear() === this.anioActual && hoy.getMonth() === this.mesActual && hoy.getDate() === d;
+        celdas.push({ dia: d, mesActual: true, fecha, eventos, esHoy });
+      }
+
+      // Completar última semana
+      const restante = 7 - (celdas.length % 7);
+      if (restante < 7) {
+        for (let d = 1; d <= restante; d++) {
+          celdas.push({ dia: d, mesActual: false, fecha: null, eventos: [], esHoy: false });
+        }
+      }
+
+      this.celdasCalendario = celdas;
+    },
+    mesAnterior() {
+      if (this.mesActual === 0) { this.mesActual = 11; this.anioActual--; }
+      else this.mesActual--;
+      this.construirCalendario();
+    },
+    mesSiguiente() {
+      if (this.mesActual === 11) { this.mesActual = 0; this.anioActual++; }
+      else this.mesActual++;
+      this.construirCalendario();
+    },
+    seleccionarEvento(evento) {
+      this.eventoSeleccionado = evento;
+    },
+    tipoColor(tipo) {
+      if (tipo === 'Laboratorios') return 'bg-blue-100 text-blue-700 border border-blue-200';
+      if (tipo === 'Canchas')      return 'bg-emerald-100 text-emerald-700 border border-emerald-200';
+      return 'bg-purple-100 text-purple-700 border border-purple-200';
+    },
+    tipoColorBg(tipo) {
+      if (tipo === 'Laboratorios') return 'bg-blue-50 text-blue-600';
+      if (tipo === 'Canchas')      return 'bg-emerald-50 text-emerald-600';
+      return 'bg-purple-50 text-purple-600';
+    },
+    tipoEmoji(tipo) {
+      if (tipo === 'Laboratorios') return '💻';
+      if (tipo === 'Canchas')      return '⚽';
+      return '🏛️';
+    },
+    // ──────────────────────────────────────────────────────
+    esFuturo(fecha) {      const hoy = new Date().toISOString().split('T')[0];
+      return String(fecha).split('T')[0] >= hoy;
+    },
+    async descargarCalendario(reserva) {
+      await this.descargarCalendarioById(reserva.id, String(reserva.fecha).split('T')[0]);
+    },
+    async descargarCalendarioById(id, fechaStr) {
+      try {
+        const res = await fetch(`/api/reservas/${id}/ics`);
+        if (!res.ok) {
+          const data = await res.json();
+          alert(data.message || 'No se pudo generar el archivo de calendario');
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reserva_${id}${fechaStr ? '_' + fechaStr : ''}.ics`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch {
+        alert('Error de conexión al generar el archivo de calendario');
       }
     },
     async handleLogout() {
