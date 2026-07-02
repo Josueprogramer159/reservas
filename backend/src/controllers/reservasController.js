@@ -1,5 +1,6 @@
 import pool from '../db/database.js';
 import { getReservationConfig } from '../utils/reservationConfig.js';
+import { generarCodigoQR } from './asistenciaController.js';
 
 export const crearReserva = async (req, res) => {
   try {
@@ -53,6 +54,16 @@ export const crearReserva = async (req, res) => {
     );
 
     const espacio = espacioCheck.rows[0];
+    const reservaId = result.rows[0].id;
+
+    // Generar código QR automáticamente
+    let qrData = null;
+    try {
+      qrData = await generarCodigoQR(reservaId, usuarioId, espacio_id, fecha);
+      console.log('✅ QR generado automáticamente para la reserva');
+    } catch (qrError) {
+      console.error('⚠️ Error al generar QR (pero la reserva fue creada):', qrError.message);
+    }
 
     res.status(201).json({
       success: true,
@@ -60,7 +71,8 @@ export const crearReserva = async (req, res) => {
       reserva: {
         ...result.rows[0],
         espacio_nombre: espacio.nombre,
-        espacio_tipo: espacio.tipo
+        espacio_tipo: espacio.tipo,
+        qr_generado: qrData ? true : false
       },
       configuracionReserva
     });

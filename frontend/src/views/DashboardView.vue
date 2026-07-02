@@ -70,6 +70,79 @@
           </div>
         </div>
 
+        <!-- BÚSQUEDA Y FILTROS -->
+        <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
+          <h3 class="font-bold text-slate-900 text-sm">Buscar y Filtrar</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Búsqueda por nombre -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Nombre del Espacio</label>
+              <input
+                v-model="filtros.nombre"
+                type="text"
+                placeholder="Ej: Laboratorio de..."
+                @input="aplicarFiltros"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] focus:border-transparent"
+              />
+            </div>
+
+            <!-- Filtro por tipo -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Tipo de Espacio</label>
+              <select
+                v-model="filtros.tipo"
+                @change="aplicarFiltros"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] focus:border-transparent bg-white"
+              >
+                <option value="">Todos los tipos</option>
+                <option value="Laboratorios">🔬 Laboratorios</option>
+                <option value="Canchas">⚽ Canchas</option>
+                <option value="Salas">🏛️ Salas</option>
+              </select>
+            </div>
+
+            <!-- Capacidad mínima -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Capacidad Mínima</label>
+              <input
+                v-model.number="filtros.capacidad_min"
+                type="number"
+                placeholder="Ej: 10"
+                @input="aplicarFiltros"
+                min="0"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] focus:border-transparent"
+              />
+            </div>
+
+            <!-- Capacidad máxima -->
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Capacidad Máxima</label>
+              <input
+                v-model.number="filtros.capacidad_max"
+                type="number"
+                placeholder="Ej: 50"
+                @input="aplicarFiltros"
+                min="0"
+                class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <!-- Botones de acción -->
+          <div class="flex gap-3 pt-2">
+            <button
+              @click="limpiarFiltros"
+              class="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition active:scale-95"
+            >
+              Limpiar Filtros
+            </button>
+            <div class="flex-1"></div>
+            <span class="text-xs text-slate-500 font-medium flex items-center">
+              {{ espaciosFiltrados.length }} espacio{{ espaciosFiltrados.length !== 1 ? 's' : '' }} encontrado{{ espaciosFiltrados.length !== 1 ? 's' : '' }}
+            </span>
+          </div>
+        </div>
+
         <div v-if="toastMessage" class="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium flex items-center justify-between gap-3">
           <span>{{ toastMessage }}</span>
           <button v-if="ultimaReservaId" @click="descargarCalendarioById(ultimaReservaId)"
@@ -88,14 +161,21 @@
           {{ spacesError }}
         </div>
 
-        <div v-else-if="spaces.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
+        <div v-else-if="espaciosFiltrados.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
           <CalendarRange class="w-12 h-12 text-slate-300 mx-auto" />
-          <h4 class="font-bold text-slate-600 mt-4">No existen espacios disponibles</h4>
-          <p class="text-xs text-slate-400 mt-2">Contacta al administrador para más información.</p>
+          <h4 class="font-bold text-slate-600 mt-4">
+            {{ tieneFiltros ? 'No se encontraron espacios' : 'No existen espacios disponibles' }}
+          </h4>
+          <p class="text-xs text-slate-400 mt-2">
+            {{ tieneFiltros ? 'Intenta ajustar los filtros o borrarlos' : 'Contacta al administrador para más información.' }}
+          </p>
+          <button v-if="tieneFiltros" @click="limpiarFiltros" class="btn-primary mt-4 text-xs">
+            Limpiar Filtros
+          </button>
         </div>
 
         <template v-else>
-          <div v-for="cat in categorias" :key="cat.key" class="space-y-4">
+          <div v-for="cat in categoriasFiltradas" :key="cat.key" class="space-y-4">
             <h2 v-if="cat.spaces.length > 0" class="text-lg font-bold text-[#003087] flex items-center space-x-2 border-b border-slate-100 pb-2">
               <component :is="cat.icon" class="w-5 h-5 text-[#FFB800]" />
               <span>{{ cat.label }}</span>
@@ -166,45 +246,105 @@
         </div>
 
         <div v-else class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-          <div v-if="myReservations.length > 0" class="space-y-4">
+          <div v-if="myReservations.length > 0" class="space-y-6">
             <div
               v-for="res in myReservations"
               :key="res.id"
-              class="p-4 rounded-2xl border border-slate-100 hover:border-slate-200/80 hover:bg-slate-50/50 transition-all duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              class="p-4 rounded-2xl border border-slate-100 hover:border-slate-200/80 hover:bg-slate-50/50 transition-all duration-200 space-y-4"
             >
-              <div class="flex items-start sm:items-center space-x-4">
-                <div class="p-3 bg-blue-50 text-[#003087] rounded-xl flex-shrink-0">
-                  <component :is="getSpaceIcon(res.espacio_tipo)" class="w-5.5 h-5.5" />
+              <!-- Información de la reserva -->
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-start sm:items-center space-x-4">
+                  <div class="p-3 bg-blue-50 text-[#003087] rounded-xl flex-shrink-0">
+                    <component :is="getSpaceIcon(res.espacio_tipo)" class="w-5.5 h-5.5" />
+                  </div>
+                  <div>
+                    <h4 class="font-bold text-slate-900 text-sm">{{ res.espacio_nombre }}</h4>
+                    <p class="text-xs text-slate-500 mt-1 font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span>Fecha: {{ res.fecha }}</span>
+                      <span class="text-slate-300">|</span>
+                      <span>Horario: {{ res.horario }}</span>
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 class="font-bold text-slate-900 text-sm">{{ res.espacio_nombre }}</h4>
-                  <p class="text-xs text-slate-500 mt-1 font-medium flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <span>Fecha: {{ res.fecha }}</span>
-                    <span class="text-slate-300">|</span>
-                    <span>Horario: {{ res.horario }}</span>
-                  </p>
+                <div class="flex items-center justify-between sm:justify-end gap-3">
+                  <span class="px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-700">
+                    {{ res.estado }}
+                  </span>
+                  <button
+                    @click="toggleQRSection(res.id)"
+                    class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg transition duration-200"
+                    title="Ver Código QR"
+                  >
+                    <QrCode class="w-4 h-4" />
+                    <span class="hidden sm:inline">
+                      {{ qrSectionsExpanded[res.id] ? 'Ocultar QR' : 'Ver QR' }}
+                    </span>
+                  </button>
+                  <button
+                    @click="descargarCalendario(res)"
+                    class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg transition duration-200"
+                    title="Agregar a mi calendario"
+                  >
+                    <CalendarPlus class="w-4 h-4" />
+                    <span class="hidden sm:inline">Calendario</span>
+                  </button>
+                  <button
+                    @click="cancelReservation(res.id)"
+                    class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition duration-200"
+                    title="Cancelar Reserva"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                  </button>
                 </div>
               </div>
-              <div class="flex items-center justify-between sm:justify-end gap-3">
-                <span class="px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-700">
-                  {{ res.estado }}
-                </span>
-                <button
-                  @click="descargarCalendario(res)"
-                  class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg transition duration-200"
-                  title="Agregar a mi calendario"
-                >
-                  <CalendarPlus class="w-4 h-4" />
-                  <span class="hidden sm:inline">Calendario</span>
-                </button>
-                <button
-                  @click="cancelReservation(res.id)"
-                  class="text-red-500 hover:bg-red-50 p-2 rounded-lg transition duration-200"
-                  title="Cancelar Reserva"
-                >
-                  <Trash2 class="w-4 h-4" />
-                </button>
-              </div>
+
+              <!-- Sección QR -->
+              <transition name="fade">
+                <div v-if="qrSectionsExpanded[res.id] && codigosQR[res.id]" class="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center gap-4">
+                  <!-- Imagen QR -->
+                  <div class="flex-shrink-0 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                    <img 
+                      v-if="codigosQR[res.id].qr_base64" 
+                      :src="codigosQR[res.id].qr_base64" 
+                      alt="Código QR" 
+                      class="w-24 h-24 rounded"
+                    />
+                  </div>
+
+                  <!-- Información y botones -->
+                  <div class="flex-1 space-y-3">
+                    <div>
+                      <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Código QR para Asistencia</p>
+                      <p class="text-sm text-slate-700">Escanea este código en el espacio para registrar tu asistencia</p>
+                    </div>
+
+                    <div class="flex gap-2 flex-wrap">
+                      <button
+                        @click="abrirScannerQR"
+                        class="flex items-center gap-2 px-3 py-2 bg-[#003087] text-white text-xs font-semibold rounded-lg hover:bg-blue-800 transition active:scale-95"
+                      >
+                        <QrCode class="w-4 h-4" />
+                        Escanear QR
+                      </button>
+
+                      <a
+                        v-if="codigosQR[res.id].qr_base64"
+                        :href="codigosQR[res.id].qr_base64"
+                        download
+                        class="flex items-center gap-2 px-3 py-2 border border-[#003087] text-[#003087] text-xs font-semibold rounded-lg hover:bg-blue-50 transition active:scale-95"
+                      >
+                        📥 Descargar
+                      </a>
+                    </div>
+
+                    <!-- Estado de validez del QR -->
+                    <div class="text-xs text-slate-500 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                      ✅ Válido desde 30 min antes de la fecha programada hasta 24h después
+                    </div>
+                  </div>
+                </div>
+              </transition>
             </div>
           </div>
           <div v-else class="text-center py-12 space-y-3">
@@ -288,98 +428,6 @@
         </div>
       </div>
 
-      <!-- MI CALENDARIO -->
-      <div v-else-if="activeTab === 'calendario'" class="space-y-6">
-        <div>
-          <h1 class="text-2xl font-extrabold text-slate-900">Mi Calendario</h1>
-          <p class="text-sm text-slate-500 mt-1">Visualiza todas tus reservas en un calendario interactivo</p>
-        </div>
-
-        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 space-y-6">
-          <!-- Cabecera del Calendario -->
-          <div class="flex items-center justify-between mb-6">
-            <button @click="mesAnterior" class="p-2 hover:bg-slate-100 rounded-lg transition">
-              <ChevronLeft class="w-5 h-5 text-slate-600" />
-            </button>
-            <h2 class="text-xl font-bold text-slate-900 min-w-48 text-center capitalize">
-              {{ nombreMes }} {{ anioActual }}
-            </h2>
-            <button @click="mesSiguiente" class="p-2 hover:bg-slate-100 rounded-lg transition">
-              <ChevronRight class="w-5 h-5 text-slate-600" />
-            </button>
-          </div>
-
-          <!-- Días de la semana -->
-          <div class="grid grid-cols-7 gap-1 mb-2">
-            <div v-for="dia in ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sab', 'Dom']" :key="dia"
-              class="h-10 flex items-center justify-center font-bold text-xs text-slate-500 uppercase">
-              {{ dia }}
-            </div>
-          </div>
-
-          <!-- Celdas del calendario -->
-          <div class="grid grid-cols-7 gap-1">
-            <div v-for="(celda, idx) in celdasCalendario" :key="idx"
-              class="aspect-square rounded-lg p-2 cursor-pointer transition-all duration-200 relative"
-              :class="[
-                celda.mesActual
-                  ? celda.esHoy
-                    ? 'bg-[#003087] text-white font-bold'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
-                  : 'bg-slate-100 text-slate-400',
-                celda.eventos.length > 0 ? 'ring-2 ring-emerald-400' : ''
-              ]"
-              @click="celda.eventos.length > 0 && seleccionarEvento(celda.eventos[0])">
-
-              <div class="flex flex-col h-full justify-between">
-                <div class="text-sm font-semibold">{{ celda.dia }}</div>
-                <div v-if="celda.eventos.length > 0" class="flex gap-0.5 flex-wrap">
-                  <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id"
-                    class="w-1.5 h-1.5 rounded-full"
-                    :class="{
-                      'bg-blue-500': evt.espacio_tipo === 'Laboratorios',
-                      'bg-emerald-500': evt.espacio_tipo === 'Canchas',
-                      'bg-purple-500': evt.espacio_tipo === 'Salas'
-                    }"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Detalles del evento seleccionado -->
-          <div v-if="eventoSeleccionado" class="mt-8 pt-6 border-t border-slate-200 space-y-4">
-            <h3 class="font-bold text-slate-900">Evento Seleccionado</h3>
-            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-              <div>
-                <p class="text-xs text-slate-500 font-semibold uppercase">Espacio</p>
-                <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.espacio_nombre }}</p>
-              </div>
-              <div class="grid grid-cols-2 gap-4">
-                <div>
-                  <p class="text-xs text-slate-500 font-semibold uppercase">Fecha</p>
-                  <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.fecha }}</p>
-                </div>
-                <div>
-                  <p class="text-xs text-slate-500 font-semibold uppercase">Horario</p>
-                  <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.horario }}</p>
-                </div>
-              </div>
-              <div>
-                <p class="text-xs text-slate-500 font-semibold uppercase">Estado</p>
-                <span class="inline-block px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">
-                  {{ eventoSeleccionado.estado }}
-                </span>
-              </div>
-              <button @click="descargarCalendario(eventoSeleccionado)"
-                class="w-full mt-4 flex items-center justify-center gap-2 bg-[#003087] text-white font-semibold py-2.5 rounded-lg hover:bg-blue-800 transition text-sm">
-                <CalendarPlus class="w-4 h-4" />
-                Agregar a mi calendario
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- MI PERFIL -->
       <div v-else-if="activeTab === 'perfil'" class="space-y-6">
         <div>
@@ -443,6 +491,13 @@
         </div>
       </div>
     </div>
+
+    <!-- QR SCANNER MODAL -->
+    <QRScannerModal
+      :mostrar="mostrarScannerQR"
+      @cerrar="mostrarScannerQR = false"
+      @asistencia-registrada="onAsistenciaRegistrada"
+    />
   </div>
 </template>
 
@@ -450,16 +505,18 @@
 import {
   CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2,
   Monitor, Trophy, Video, Users, Loader2, CalendarPlus,
-  CalendarDays, ChevronLeft, ChevronRight
+  CalendarDays, ChevronLeft, ChevronRight, QrCode
 } from 'lucide-vue-next';
 import { authState } from '../router';
+import QRScannerModal from '../components/QRScannerModal.vue';
 
 export default {
   name: 'DashboardView',
   components: {
     CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2,
     Monitor, Trophy, Video, Users, Loader2, CalendarPlus,
-    CalendarDays, ChevronLeft, ChevronRight
+    CalendarDays, ChevronLeft, ChevronRight, QrCode,
+    QRScannerModal
   },
   data() {
     return {
@@ -477,6 +534,19 @@ export default {
       toastMessage: '',
       submitting: false,
       ultimaReservaId: null,
+      // Filtros
+      filtros: {
+        nombre: '',
+        tipo: '',
+        capacidad_min: null,
+        capacidad_max: null
+      },
+      espaciosFiltrados: [],
+      // QR Scanner
+      mostrarScannerQR: false,
+      codigosQR: {},
+      asistenciasRegistradas: {},
+      qrSectionsExpanded: {},
       // Calendario
       mesActual: new Date().getMonth(),
       anioActual: new Date().getFullYear(),
@@ -494,14 +564,27 @@ export default {
         .toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
         .split(' ')[0];
     },
+    tieneFiltros() {
+      return this.filtros.nombre.trim() !== '' || 
+             this.filtros.tipo !== '' || 
+             this.filtros.capacidad_min !== null || 
+             this.filtros.capacidad_max !== null;
+    },
     laboratorios() {
-      return this.spaces.filter(s => s.tipo === 'Laboratorios');
+      return this.espaciosFiltrados.filter(s => s.tipo === 'Laboratorios');
     },
     canchas() {
-      return this.spaces.filter(s => s.tipo === 'Canchas');
+      return this.espaciosFiltrados.filter(s => s.tipo === 'Canchas');
     },
     salas() {
-      return this.spaces.filter(s => s.tipo === 'Salas');
+      return this.espaciosFiltrados.filter(s => s.tipo === 'Salas');
+    },
+    categoriasFiltradas() {
+      return [
+        { key: 'lab', label: '🔬 Laboratorios de Computación y Especializados', icon: 'Monitor', spaces: this.laboratorios },
+        { key: 'canchas', label: '⚽ Canchas Deportivas', icon: 'Trophy', spaces: this.canchas },
+        { key: 'salas', label: '🏛️ Salas de Conferencias y Estudio', icon: 'Video', spaces: this.salas }
+      ];
     },
     categorias() {
       return [
@@ -529,6 +612,7 @@ export default {
         const data = await res.json();
         if (data.success) {
           this.spaces = data.espacios || [];
+          this.espaciosFiltrados = this.spaces;
           this.reservationConfig = data.configuracionReserva || null;
         } else {
           this.spacesError = data.message || 'Error al cargar espacios';
@@ -539,6 +623,41 @@ export default {
         this.loadingSpaces = false;
       }
     },
+    async aplicarFiltros() {
+      // Aplicar filtros localmente (en tiempo real sin llamar al backend)
+      this.espaciosFiltrados = this.spaces.filter(space => {
+        // Filtro por nombre (insensible a mayúsculas)
+        if (this.filtros.nombre.trim()) {
+          const nombre = space.nombre.toLowerCase();
+          const busqueda = this.filtros.nombre.toLowerCase();
+          if (!nombre.includes(busqueda)) return false;
+        }
+
+        // Filtro por tipo
+        if (this.filtros.tipo) {
+          if (space.tipo !== this.filtros.tipo) return false;
+        }
+
+        // Filtro por capacidad mínima
+        if (this.filtros.capacidad_min !== null && this.filtros.capacidad_min > 0) {
+          if (space.capacidad < this.filtros.capacidad_min) return false;
+        }
+
+        // Filtro por capacidad máxima
+        if (this.filtros.capacidad_max !== null && this.filtros.capacidad_max > 0) {
+          if (space.capacidad > this.filtros.capacidad_max) return false;
+        }
+
+        return true;
+      });
+    },
+    limpiarFiltros() {
+      this.filtros.nombre = '';
+      this.filtros.tipo = '';
+      this.filtros.capacidad_min = null;
+      this.filtros.capacidad_max = null;
+      this.espaciosFiltrados = this.spaces;
+    },
     async fetchMyReservations() {
       this.loadingReservations = true;
       try {
@@ -546,12 +665,51 @@ export default {
         const data = await res.json();
         if (data.success) {
           this.myReservations = data.reservas || [];
+          // Cargar códigos QR para cada reserva
+          await this.cargarCodigosQR();
         }
       } catch {
         console.error('Error al cargar reservas');
       } finally {
         this.loadingReservations = false;
       }
+    },
+    async cargarCodigosQR() {
+      for (const reserva of this.myReservations) {
+        try {
+          const res = await fetch(`/api/asistencias/${reserva.id}/qr`);
+          const data = await res.json();
+          if (data.success) {
+            this.codigosQR[reserva.id] = data.qr;
+          }
+        } catch (err) {
+          console.error(`Error cargando QR para reserva ${reserva.id}:`, err);
+        }
+      }
+    },
+    async toggleQRSection(reservaId) {
+      // If we're expanding, and don't have the QR yet, fetch it!
+      if (!this.qrSectionsExpanded[reservaId] && !this.codigosQR[reservaId]) {
+        try {
+          const res = await fetch(`/api/asistencias/${reservaId}/qr`);
+          const data = await res.json();
+          if (data.success) {
+            this.codigosQR[reservaId] = data.qr;
+          }
+        } catch (err) {
+          console.error(`Error cargando QR para reserva ${reservaId}:`, err);
+        }
+      }
+      this.qrSectionsExpanded[reservaId] = !this.qrSectionsExpanded[reservaId];
+    },
+    abrirScannerQR() {
+      this.mostrarScannerQR = true;
+    },
+    onAsistenciaRegistrada() {
+      // Recargar reservas después de registrar asistencia
+      this.toastMessage = '✅ Asistencia registrada correctamente';
+      setTimeout(() => { this.toastMessage = ''; }, 4000);
+      this.fetchMyReservations();
     },
     getSpaceIcon(tipo) {
       if (tipo === 'Laboratorios') return 'Monitor';
@@ -721,3 +879,16 @@ export default {
   }
 };
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+</style>

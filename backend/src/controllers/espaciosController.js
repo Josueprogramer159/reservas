@@ -270,3 +270,85 @@ export const listarEspaciosAdmin = async (req, res) => {
     res.status(500).json({ success: false, message: 'Error al consultar los espacios' });
   }
 };
+
+export const buscarEspacios = async (req, res) => {
+  try {
+    const { nombre, tipo, capacidad_min, capacidad_max } = req.query;
+    const configuracionReserva = await getReservationConfig();
+    const fechaConsulta = configuracionReserva?.fecha || new Date().toISOString().split('T')[0];
+
+    // Construir query dinámica
+    let query = 'SELECT * FROM espacios WHERE activo = true';
+    const params = [];
+    let paramIndex = 1;
+
+    // Filtro por nombre (insensible a mayúsculas)
+    if (nombre && nombre.trim()) {
+      query += ` AND LOWER(nombre) LIKE LOWER($${paramIndex})`;
+      params.push(`%${nombre.trim()}%`);
+      paramIndex++;
+    }
+
+    // Filtro por tipo
+    if (tipo && tipo.trim()) {
+      query += ` AND tipo = $${paramIndex}`;
+      params.push(tipo.trim());
+      paramIndex++;
+    }
+
+    // Filtro por capacidad mínima
+    if (capacidad_min) {
+      const min = parseInt(capacidad_min);
+      if (!isNaN(min)) {
+        query += ` AND capacidad >= $${paramIndex}`;
+        params.push(min);
+        paramIndex++;
+      }
+    }
+
+    // Filtro por capacidad máxima
+    if (capacidad_max) {
+      const max = parseInt(capacidad_max);
+      if (!isNaN(max)) {
+        query += ` AND capacidad <= $${paramIndex}`;
+        params.push(max);
+        paramIndex++;
+      }
+    }
+
+    query += ' ORDER BY tipo, nombre';
+
+    const result = await pool.query(query, params);
+
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        espacios: [],
+        message: 'No se encontraron espacios que coincidan con los filtros aplicados'
+      });
+    }
+
+    const espacios = await Promise.all(
+      result.rows.map(async (row) => {
+        const ocupados = await getHorariosOcupados(row.id, fechaConsulta);
+        return mapEspacio(row, ocupados, configuracionReserva);
+      })
+    );
+
+    res.json({
+      success: true,
+      espacios,
+      fecha: fechaConsulta,
+      configuracionReserva,
+      filtros_aplicados: {
+        nombre: nombre || null,
+        tipo: tipo || null,
+        capacidad_min: capacidad_min ? parseInt(capacidad_min) : null,
+        capacidad_max: capacidad_max ? parseInt(capacidad_max) : null
+      }
+    });
+  } catch (error) {
+    console.error('Error al buscar espacios:', error);
+    res.status(500).json({ success: false, message: 'Error al buscar espacios' });
+  }
+};

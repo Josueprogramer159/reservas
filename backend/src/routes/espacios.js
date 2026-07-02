@@ -6,7 +6,8 @@ import {
   editarEspacio,
   eliminarEspacio,
   toggleActivoEspacio,
-  listarEspaciosAdmin
+  listarEspaciosAdmin,
+  buscarEspacios
 } from '../controllers/espaciosController.js';
 import { requireAdminAuth } from '../middleware/requireAuth.js';
 
@@ -14,6 +15,9 @@ const router = express.Router();
 
 // Ruta admin: listar todos (activos e inactivos) — ANTES de /:id
 router.get('/admin/todos', requireAdminAuth, listarEspaciosAdmin);
+
+// Ruta de búsqueda — ANTES de /:id
+router.get('/buscar', buscarEspacios);
 
 // Rutas públicas (usuarios e invitados)
 router.get('/', listarEspacios);

@@ -12,11 +12,12 @@ import espaciosRoutes from './routes/espacios.js';
 import reservasRoutes from './routes/reservas.js';
 import reportesRoutes from './routes/reportes.js';
 import uploadsRoutes from './routes/uploads.js';
+import asistenciasRoutes from './routes/asistencias.js';
 import { getDbErrorMessage } from './utils/dbError.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3002;
 
 const PgSession = pgSession(session);
 
@@ -55,6 +56,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/espacios', espaciosRoutes);
 app.use('/api/reservas', reservasRoutes);
 app.use('/api/admin/reportes', reportesRoutes);
+app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/upload', uploadsRoutes);
 
 app.get('/api/health', async (req, res) => {
