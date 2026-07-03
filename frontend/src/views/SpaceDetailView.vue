@@ -46,10 +46,14 @@
         <div class="p-8 space-y-6">
           <div>
             <h1 class="text-2xl font-extrabold text-slate-900">{{ espacio.nombre }}</h1>
-            <p class="text-sm text-slate-500 mt-2 leading-relaxed">{{ espacio.descripcion }}</p>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div v-if="espacio.descripcion" class="bg-blue-50 rounded-xl p-5 border border-blue-100">
+            <h3 class="text-sm font-bold text-[#003087] mb-2">Descripción</h3>
+            <p class="text-sm text-slate-600 leading-relaxed">{{ espacio.descripcion }}</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
               <Users class="w-5 h-5 text-[#FFB800] mb-2" />
               <p class="text-xs text-slate-400 font-bold uppercase">Capacidad</p>
@@ -65,38 +69,11 @@
               <p class="text-xs text-slate-400 font-bold uppercase">Tipo</p>
               <p class="text-sm font-semibold text-slate-900">{{ espacio.tipo }}</p>
             </div>
-          </div>
-
-          <div v-if="espacio.info_complementaria" class="bg-blue-50 rounded-xl p-5 border border-blue-100">
-            <h3 class="text-sm font-bold text-[#003087] mb-2">Información complementaria</h3>
-            <p class="text-sm text-slate-600 leading-relaxed">{{ espacio.info_complementaria }}</p>
-          </div>
-
-          <div class="bg-slate-50 rounded-xl p-5 border border-slate-100">
-            <h3 class="text-sm font-bold text-slate-900 mb-2">Reserva definida por administración</h3>
-            <p v-if="reservationConfig" class="text-sm text-slate-600">
-              Fecha: <span class="font-semibold text-slate-900">{{ reservationConfig.fecha }}</span>
-              | Horario: <span class="font-semibold text-slate-900">{{ reservationConfig.horario }}</span>
-            </p>
-            <p v-else class="text-sm text-amber-600 font-medium">
-              El administrador aún no ha configurado la fecha y el horario para reservar.
-            </p>
-          </div>
-
-          <div v-if="espacio.horarios_libres?.length > 0" class="space-y-2">
-            <p class="text-xs font-bold text-slate-500 uppercase">Horario disponible</p>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="h in espacio.horarios_libres"
-                :key="h"
-                class="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-100"
-              >
-                {{ h }}
-              </span>
+            <div v-if="espacio.horario" class="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+              <span class="text-lg mb-2 block">🕐</span>
+              <p class="text-xs text-emerald-600 font-bold uppercase">Horario</p>
+              <p class="text-sm font-bold text-emerald-800">{{ espacio.horario }}</p>
             </div>
-          </div>
-          <div v-else class="p-4 bg-red-50 rounded-xl border border-red-100">
-            <p class="text-sm text-red-700 font-medium">No hay disponibilidad para la configuración actual de reservas.</p>
           </div>
 
           <div v-if="successMessage" class="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">
@@ -212,6 +189,7 @@ export default {
         if (data.success) {
           this.showModal = false;
           this.successMessage = data.message;
+          setTimeout(() => { this.successMessage = ''; }, 6000);
           await this.fetchEspacio();
         } else {
           this.reservationError = data.message;

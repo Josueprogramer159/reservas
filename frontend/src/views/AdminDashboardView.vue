@@ -74,6 +74,7 @@
                 <th class="py-3 px-4">Nombre</th>
                 <th class="py-3 px-4">Tipo</th>
                 <th class="py-3 px-4">Capacidad</th>
+                <th class="py-3 px-4">Horario</th>
                 <th class="py-3 px-4">Ubicación</th>
                 <th class="py-3 px-4">Estado</th>
                 <th class="py-3 px-4 text-center">Acciones</th>
@@ -81,16 +82,17 @@
             </thead>
             <tbody>
               <tr v-if="loadingEspacios">
-                <td colspan="7" class="py-10 text-center text-slate-400">Cargando espacios...</td>
+                <td colspan="8" class="py-10 text-center text-slate-400">Cargando espacios...</td>
               </tr>
               <tr v-else-if="espacios.length === 0">
-                <td colspan="7" class="py-10 text-center text-slate-400">No hay espacios registrados.</td>
+                <td colspan="8" class="py-10 text-center text-slate-400">No hay espacios registrados.</td>
               </tr>
               <tr v-for="esp in espacios" :key="esp.id" class="border-b border-slate-50 hover:bg-slate-50/50 transition text-sm text-slate-700">
                 <td class="py-3.5 px-4 font-semibold text-slate-900">#{{ esp.id }}</td>
                 <td class="py-3.5 px-4 font-medium max-w-[180px] truncate">{{ esp.nombre }}</td>
                 <td class="py-3.5 px-4"><span class="px-2 py-0.5 rounded bg-blue-50 text-[#003087] font-semibold text-xs">{{ esp.tipo }}</span></td>
                 <td class="py-3.5 px-4">{{ esp.capacidad }} pers.</td>
+                <td class="py-3.5 px-4 text-slate-600 font-medium text-xs">{{ esp.horario || 'No definido' }}</td>
                 <td class="py-3.5 px-4 text-slate-500 max-w-[160px] truncate">{{ esp.ubicacion }}</td>
                 <td class="py-3.5 px-4">
                   <button @click="toggleActivo(esp)" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition"
@@ -624,33 +626,53 @@
 
           <div v-if="formError" class="mb-4 p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs font-medium">{{ formError }}</div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div class="sm:col-span-2">
+          <div class="grid grid-cols-1 gap-4">
+            <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Nombre <span class="text-red-500">*</span></label>
               <input v-model="form.nombre" type="text" class="form-input text-sm" placeholder="Ej: Laboratorio de Computación B3" maxlength="200">
             </div>
-            <div>
-              <label class="block text-xs font-bold text-slate-500 mb-1">Tipo <span class="text-red-500">*</span></label>
-              <select v-model="form.tipo" class="form-input text-sm">
-                <option value="" disabled>Selecciona un tipo</option>
-                <option value="Laboratorios">Laboratorios</option>
-                <option value="Canchas">Canchas</option>
-                <option value="Salas">Salas</option>
-              </select>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Tipo <span class="text-red-500">*</span></label>
+                <select v-model="form.tipo" class="form-input text-sm">
+                  <option value="" disabled>Selecciona un tipo</option>
+                  <option value="Laboratorios">Laboratorios</option>
+                  <option value="Canchas">Canchas</option>
+                  <option value="Salas">Salas</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Capacidad <span class="text-red-500">*</span></label>
+                <input v-model="form.capacidad" type="number" min="1" class="form-input text-sm" placeholder="Ej: 30">
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Horario Disponible <span class="text-red-500">*</span></label>
+                <div class="flex gap-2">
+                  <select v-model="form.horario" class="form-input text-sm flex-1">
+                    <option value="" disabled>Selecciona un horario</option>
+                    <option v-for="h in availableHorarios" :key="h" :value="h">{{ h }}</option>
+                    <option value="personalizado">📝 Horario personalizado</option>
+                  </select>
+                  <input v-if="form.horario === 'personalizado'" v-model="horarioPersonalizado" 
+                    type="text" 
+                    placeholder="Ej: 09:30 - 11:30"
+                    class="form-input text-sm w-40"
+                    @blur="aplicarHorarioPersonalizado">
+                </div>
+                <p v-if="form.horario === 'personalizado'" class="text-xs text-slate-500 mt-1">
+                  Formato: HH:MM - HH:MM (ej: 09:30 - 11:30)
+                </p>
+              </div>
             </div>
             <div>
-              <label class="block text-xs font-bold text-slate-500 mb-1">Capacidad <span class="text-red-500">*</span></label>
-              <input v-model="form.capacidad" type="number" min="1" class="form-input text-sm" placeholder="Ej: 30">
-            </div>
-            <div class="sm:col-span-2">
               <label class="block text-xs font-bold text-slate-500 mb-1">Ubicación <span class="text-red-500">*</span></label>
               <input v-model="form.ubicacion" type="text" class="form-input text-sm" placeholder="Ej: Bloque B, Segundo Piso" maxlength="200">
             </div>
-            <div class="sm:col-span-2">
+            <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Descripción</label>
               <textarea v-model="form.descripcion" class="form-input text-sm" rows="2" placeholder="Descripción breve del espacio..."></textarea>
             </div>
-            <div class="sm:col-span-2">
+            <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Imagen del Espacio</label>
 
               <!-- Zona de carga -->
@@ -694,10 +716,6 @@
               </p>
               <p v-if="imagenError" class="text-xs text-red-500 font-semibold mt-1.5">{{ imagenError }}</p>
             </div>
-            <div class="sm:col-span-2">
-              <label class="block text-xs font-bold text-slate-500 mb-1">Información Complementaria</label>
-              <textarea v-model="form.info_complementaria" class="form-input text-sm" rows="2" placeholder="Detalles adicionales del espacio..."></textarea>
-            </div>
           </div>
 
           <div class="flex space-x-3 mt-6">
@@ -736,7 +754,7 @@
 import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck as UserCheckIcon, ClipboardList } from 'lucide-vue-next';
 import { authState } from '../router';
 
-const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', info_complementaria: '' };
+const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '' };
 
 export default {
   name: 'AdminDashboardView',
@@ -762,6 +780,7 @@ export default {
       espacioEditandoId: null,
       imagenError: false,
       subiendoImagen: false,
+      horarioPersonalizado: '',
       // Modal eliminar
       showDeleteModal: false, espacioAEliminar: null,
       deleteError: '', eliminando: false,
@@ -843,6 +862,7 @@ export default {
       this.imagenError = false;
       this.subiendoImagen = false;
       this.espacioEditandoId = null;
+      this.horarioPersonalizado = '';
       this.showEspacioModal = true;
     },
     abrirModalEditar(esp) {
@@ -853,12 +873,33 @@ export default {
       this.form = {
         nombre: esp.nombre, tipo: esp.tipo, capacidad: esp.capacidad,
         ubicacion: esp.ubicacion, descripcion: esp.descripcion || '',
-        imagen: esp.imagen || '', info_complementaria: esp.info_complementaria || ''
+        imagen: esp.imagen || '', horario: esp.horario || ''
       };
+      // Si el horario no está en la lista predefinida, es personalizado
+      this.horarioPersonalizado = '';
+      if (esp.horario && !this.availableHorarios.includes(esp.horario)) {
+        this.horarioPersonalizado = esp.horario;
+        this.form.horario = 'personalizado';
+      }
       this.formError = '';
       this.showEspacioModal = true;
     },
-    cerrarModal() { this.showEspacioModal = false; this.formError = ''; },
+    cerrarModal() { 
+      this.showEspacioModal = false; 
+      this.formError = ''; 
+      this.horarioPersonalizado = '';
+    },
+    aplicarHorarioPersonalizado() {
+      if (this.horarioPersonalizado.trim()) {
+        // Validar formato básico HH:MM - HH:MM
+        const horarioPattern = /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/;
+        if (horarioPattern.test(this.horarioPersonalizado.trim())) {
+          this.form.horario = this.horarioPersonalizado.trim();
+        } else {
+          this.formError = 'Formato de horario inválido. Use: HH:MM - HH:MM (ej: 09:30 - 11:30)';
+        }
+      }
+    },
     async subirImagen(file) {
       if (!file) return;
       const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
@@ -950,7 +991,7 @@ export default {
     },
     mostrarToast(msg, type = 'ok') {
       this.toastMsg = msg; this.toastType = type;
-      setTimeout(() => { this.toastMsg = ''; }, 4000);
+      setTimeout(() => { this.toastMsg = ''; }, 6000);
     },
     async saveReservationSettings() {
       this.savingSettings = true; this.settingsMessage = ''; this.settingsError = '';

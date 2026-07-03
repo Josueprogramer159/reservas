@@ -26,7 +26,7 @@ function mapEspacio(row, horariosOcupados = [], configuracionReserva = null) {
     ubicacion: row.ubicacion,
     descripcion: row.descripcion,
     imagen: row.imagen,
-    info_complementaria: row.info_complementaria,
+    horario: row.horario,
     activo: row.activo,
     horarios_ocupados: horariosOcupados,
     horarios_libres: horariosLibres,
@@ -106,13 +106,14 @@ export const obtenerEspacio = async (req, res) => {
 
 export const crearEspacio = async (req, res) => {
   try {
-    const { nombre, tipo, capacidad, ubicacion, descripcion, imagen, info_complementaria } = req.body;
+    const { nombre, tipo, capacidad, ubicacion, descripcion, imagen, horario } = req.body;
 
     const faltantes = [];
     if (!nombre?.trim()) faltantes.push('nombre');
     if (!tipo?.trim()) faltantes.push('tipo');
     if (!capacidad) faltantes.push('capacidad');
     if (!ubicacion?.trim()) faltantes.push('ubicacion');
+    if (!horario?.trim()) faltantes.push('horario');
 
     if (faltantes.length > 0) {
       return res.status(400).json({
@@ -133,11 +134,20 @@ export const crearEspacio = async (req, res) => {
       return res.status(400).json({ success: false, message: 'La capacidad debe ser un número entero positivo' });
     }
 
+    // Validar formato básico del horario
+    const horarioPattern = /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/;
+    if (!horarioPattern.test(horario.trim())) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El formato del horario debe ser HH:MM - HH:MM (ej: 08:00 - 10:00)' 
+      });
+    }
+
     const result = await pool.query(
-      `INSERT INTO espacios (nombre, tipo, capacidad, ubicacion, descripcion, imagen, info_complementaria, activo)
+      `INSERT INTO espacios (nombre, tipo, capacidad, ubicacion, descripcion, imagen, horario, activo)
        VALUES ($1, $2, $3, $4, $5, $6, $7, true)
        RETURNING *`,
-      [nombre.trim(), tipo, cap, ubicacion.trim(), descripcion?.trim() || null, imagen?.trim() || null, info_complementaria?.trim() || null]
+      [nombre.trim(), tipo, cap, ubicacion.trim(), descripcion?.trim() || null, imagen?.trim() || null, horario.trim()]
     );
 
     res.status(201).json({ success: true, message: 'Espacio creado correctamente', espacio: result.rows[0] });
@@ -150,13 +160,14 @@ export const crearEspacio = async (req, res) => {
 export const editarEspacio = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nombre, tipo, capacidad, ubicacion, descripcion, imagen, info_complementaria } = req.body;
+    const { nombre, tipo, capacidad, ubicacion, descripcion, imagen, horario } = req.body;
 
     const faltantes = [];
     if (!nombre?.trim()) faltantes.push('nombre');
     if (!tipo?.trim()) faltantes.push('tipo');
     if (!capacidad) faltantes.push('capacidad');
     if (!ubicacion?.trim()) faltantes.push('ubicacion');
+    if (!horario?.trim()) faltantes.push('horario');
 
     if (faltantes.length > 0) {
       return res.status(400).json({
@@ -177,15 +188,24 @@ export const editarEspacio = async (req, res) => {
       return res.status(400).json({ success: false, message: 'La capacidad debe ser un número entero positivo' });
     }
 
+    // Validar formato básico del horario
+    const horarioPattern = /^\d{1,2}:\d{2}\s*-\s*\d{1,2}:\d{2}$/;
+    if (!horarioPattern.test(horario.trim())) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El formato del horario debe ser HH:MM - HH:MM (ej: 08:00 - 10:00)' 
+      });
+    }
+
     const existe = await pool.query('SELECT id FROM espacios WHERE id = $1', [id]);
     if (existe.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'El espacio no existe' });
     }
 
     const result = await pool.query(
-      `UPDATE espacios SET nombre=$1, tipo=$2, capacidad=$3, ubicacion=$4, descripcion=$5, imagen=$6, info_complementaria=$7
+      `UPDATE espacios SET nombre=$1, tipo=$2, capacidad=$3, ubicacion=$4, descripcion=$5, imagen=$6, horario=$7
        WHERE id=$8 RETURNING *`,
-      [nombre.trim(), tipo, cap, ubicacion.trim(), descripcion?.trim() || null, imagen?.trim() || null, info_complementaria?.trim() || null, id]
+      [nombre.trim(), tipo, cap, ubicacion.trim(), descripcion?.trim() || null, imagen?.trim() || null, horario.trim(), id]
     );
 
     res.json({ success: true, message: 'Espacio actualizado correctamente', espacio: result.rows[0] });
