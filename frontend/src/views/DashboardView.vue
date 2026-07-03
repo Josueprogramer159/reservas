@@ -18,6 +18,10 @@
             <CalendarRange class="w-5 h-5" />
             <span>Reservar Espacios</span>
           </button>
+          <button @click="activeTab = 'favoritos'" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200" :class="activeTab === 'favoritos' ? 'bg-[#003087] text-white shadow-md shadow-[#003087]/15' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'">
+            <Heart class="w-5 h-5" />
+            <span>Mis Favoritos</span>
+          </button>
           <button @click="activeTab = 'mis-espacios'" class="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200" :class="activeTab === 'mis-espacios' ? 'bg-[#003087] text-white shadow-md shadow-[#003087]/15' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'">
             <BookmarkCheck class="w-5 h-5" />
             <span>Mis Espacios</span>
@@ -110,7 +114,15 @@
                 <div class="relative overflow-hidden h-40 bg-slate-100">
                   <img :src="space.imagen" :alt="space.nombre" class="w-full h-full object-cover" />
                   <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
-                  <span class="absolute top-3 right-3 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.disponible ? 'Disponible' : 'No disponible' }}</span>
+                  <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.disponible ? 'Disponible' : 'No disponible' }}</span>
+                  <div class="absolute top-3 right-3">
+                    <FavoritoButton 
+                      :espacio-id="space.id" 
+                      :es-favorito="space.es_favorito" 
+                      @toggle="handleFavoritoToggle"
+                      @error="handleFavoritoError"
+                    />
+                  </div>
                 </div>
                 <div class="p-5 flex-grow flex flex-col justify-between">
                   <div>
@@ -205,6 +217,75 @@
             <BookmarkCheck class="w-12 h-12 text-slate-300 mx-auto" />
             <h4 class="font-bold text-slate-600">No tienes reservas</h4>
             <button @click="activeTab = 'reservas'" class="btn-primary mt-2 text-xs">Reservar Ahora</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: MIS FAVORITOS -->
+      <div v-else-if="activeTab === 'favoritos'" class="space-y-6">
+        <div>
+          <h1 class="text-2xl font-extrabold text-slate-900">Mis Espacios Favoritos</h1>
+          <p class="text-sm text-slate-500 mt-1">Espacios que has marcado como favoritos para acceso rápido</p>
+        </div>
+
+        <div v-if="loadingFavoritos" class="text-center py-16">
+          <Loader2 class="w-8 h-8 text-[#003087] animate-spin mx-auto" />
+        </div>
+
+        <div v-else-if="favoritosError" class="p-6 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm">{{ favoritosError }}</div>
+
+        <div v-else-if="favoritos.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
+          <Heart class="w-12 h-12 text-slate-300 mx-auto" />
+          <h4 class="font-bold text-slate-600 mt-4">No tienes espacios favoritos</h4>
+          <p class="text-xs text-slate-400 mt-2">Ve a la sección "Reservar Espacios" y marca algunos espacios como favoritos</p>
+          <button @click="activeTab = 'reservas'" class="mt-4 px-4 py-2 bg-[#003087] text-white text-sm font-semibold rounded-lg hover:bg-blue-800 transition-colors">
+            Explorar Espacios
+          </button>
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div v-for="space in favoritos" :key="space.id" class="card-premium overflow-hidden flex flex-col">
+            <div class="relative overflow-hidden h-40 bg-slate-100">
+              <img :src="space.imagen_url" :alt="space.nombre" class="w-full h-full object-cover" />
+              <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
+              <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.activo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.activo ? 'Disponible' : 'No disponible' }}</span>
+              <div class="absolute top-3 right-3">
+                <FavoritoButton 
+                  :espacio-id="space.id" 
+                  :es-favorito="true" 
+                  @toggle="handleFavoritoToggleFromFavoritos"
+                  @error="handleFavoritoError"
+                />
+              </div>
+            </div>
+            <div class="p-5 flex-grow flex flex-col justify-between">
+              <div>
+                <h3 class="font-bold text-slate-900 text-sm mb-1">{{ space.nombre }}</h3>
+                <p class="text-xs text-slate-500 mb-2">{{ space.descripcion }}</p>
+                <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                  <MapPin class="w-3.5 h-3.5" />
+                  <span>{{ space.ubicacion }}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                  <Users class="w-3.5 h-3.5" />
+                  <span>Cap: {{ space.capacidad }}</span>
+                </div>
+                <div v-if="space.horario" class="flex items-center space-x-2 text-xs text-emerald-600 mb-1 font-medium">
+                  <span>🕐</span>
+                  <span>{{ space.horario }}</span>
+                </div>
+                <div class="flex items-center space-x-2 text-xs text-slate-400 mb-4">
+                  <Heart class="w-3.5 h-3.5 fill-current text-red-500" />
+                  <span>Agregado el {{ formatearFechaFavorito(space.fecha_agregado) }}</span>
+                </div>
+              </div>
+              <div class="flex space-x-2">
+                <router-link :to="`/espacios/${space.id}`" class="flex-1 text-center border border-[#003087] text-[#003087] text-xs font-semibold py-2.5 rounded-lg hover:bg-blue-50">Ver detalle</router-link>
+                <button @click="openReservationModalFromFavorito(space)" :disabled="!space.activo" class="flex-1 text-xs font-semibold py-2.5 rounded-lg transition" :class="space.activo ? 'bg-[#003087] text-white hover:bg-blue-800' : 'bg-slate-200 text-slate-500'">
+                  {{ space.activo ? 'Reservar' : 'No disponible' }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -414,13 +495,14 @@
   </div>
 </template>
 <script>
-import { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, Pencil } from 'lucide-vue-next';
+import { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, Pencil, Heart } from 'lucide-vue-next';
 import { authState } from '../router';
 import QRScannerModal from '../components/QRScannerModal.vue';
+import FavoritoButton from '../components/FavoritoButton.vue';
 
 export default {
   name: 'DashboardView',
-  components: { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, QRScannerModal, Pencil },
+  components: { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, QRScannerModal, Pencil, Heart, FavoritoButton },
   data() {
     return {
       state: authState,
@@ -445,6 +527,10 @@ export default {
       anioActual: new Date().getFullYear(),
       celdasCalendario: [],
       eventoSeleccionado: null,
+      // Gestión de favoritos HU16
+      favoritos: [],
+      loadingFavoritos: false,
+      favoritosError: '',
       // Gestión de perfil HU15
       loadingPerfil: false,
       perfilData: {},
@@ -491,6 +577,8 @@ export default {
     activeTab(newTab) {
       if (newTab === 'perfil') {
         this.fetchPerfil();
+      } else if (newTab === 'favoritos') {
+        this.fetchFavoritos();
       }
     }
   },
@@ -499,7 +587,9 @@ export default {
       this.loadingSpaces = true;
       this.spacesError = '';
       try {
-        const res = await fetch('/api/espacios');
+        const res = await fetch('/api/espacios', {
+          credentials: 'include' // Incluir cookies de sesión
+        });
         const data = await res.json();
         if (data.success) {
           this.spaces = data.espacios || [];
@@ -517,7 +607,9 @@ export default {
     async fetchMyReservations() {
       this.loadingReservations = true;
       try {
-        const res = await fetch('/api/reservas/mis-reservas');
+        const res = await fetch('/api/reservas/mis-reservas', {
+          credentials: 'include' // Incluir cookies de sesión
+        });
         const data = await res.json();
         if (data.success) {
           this.myReservations = data.reservas || [];
@@ -532,7 +624,9 @@ export default {
     async cargarCodigosQR() {
       for (const reserva of this.myReservations) {
         try {
-          const res = await fetch(`/api/asistencias/${reserva.id}/qr`);
+          const res = await fetch(`/api/asistencias/${reserva.id}/qr`, {
+            credentials: 'include' // Incluir cookies de sesión
+          });
           const data = await res.json();
           if (data.success) {
             this.codigosQR[reserva.id] = data.qr;
@@ -555,6 +649,108 @@ export default {
       this.filtros = { nombre: '', tipo: '', capacidad_min: null, capacidad_max: null };
       this.espaciosFiltrados = this.spaces;
     },
+    
+    // Métodos de favoritos HU16
+    async fetchFavoritos() {
+      this.loadingFavoritos = true;
+      this.favoritosError = '';
+      
+      try {
+        const response = await fetch('/api/usuario/favoritos', {
+          credentials: 'include' // Incluir cookies de sesión
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          this.favoritos = data.favoritos || [];
+        } else {
+          this.favoritosError = data.message || 'Error al cargar favoritos';
+        }
+      } catch (error) {
+        console.error('Error al cargar favoritos:', error);
+        this.favoritosError = 'Error de conexión con el servidor';
+      } finally {
+        this.loadingFavoritos = false;
+      }
+    },
+
+    handleFavoritoToggle(evento) {
+      // Actualizar estado local del espacio en la lista principal
+      const espacio = this.spaces.find(s => s.id === evento.espacioId);
+      if (espacio) {
+        espacio.es_favorito = evento.esFavorito;
+      }
+
+      // También actualizar en espacios filtrados
+      const espacioFiltrado = this.espaciosFiltrados.find(s => s.id === evento.espacioId);
+      if (espacioFiltrado) {
+        espacioFiltrado.es_favorito = evento.esFavorito;
+      }
+
+      // Mostrar mensaje
+      this.toastMessage = evento.message;
+      setTimeout(() => { this.toastMessage = ''; }, 6000);
+
+      // Si estamos en la pestaña de favoritos, recargar la lista
+      if (this.activeTab === 'favoritos') {
+        this.fetchFavoritos();
+      }
+    },
+
+    handleFavoritoToggleFromFavoritos(evento) {
+      // Eliminar de la lista local de favoritos
+      if (!evento.esFavorito) {
+        this.favoritos = this.favoritos.filter(f => f.id !== evento.espacioId);
+      }
+
+      // Actualizar estado en espacios principales
+      const espacio = this.spaces.find(s => s.id === evento.espacioId);
+      if (espacio) {
+        espacio.es_favorito = evento.esFavorito;
+      }
+
+      // También actualizar en espacios filtrados
+      const espacioFiltrado = this.espaciosFiltrados.find(s => s.id === evento.espacioId);
+      if (espacioFiltrado) {
+        espacioFiltrado.es_favorito = evento.esFavorito;
+      }
+
+      // Mostrar mensaje
+      this.toastMessage = evento.message;
+      setTimeout(() => { this.toastMessage = ''; }, 6000);
+    },
+
+    handleFavoritoError(evento) {
+      this.toastMessage = evento.message;
+      setTimeout(() => { this.toastMessage = ''; }, 6000);
+    },
+
+    formatearFechaFavorito(fechaISO) {
+      const fecha = new Date(fechaISO);
+      return fecha.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    },
+
+    openReservationModalFromFavorito(space) {
+      // Convertir el espacio favorito al formato esperado por el modal
+      const espacioParaModal = {
+        id: space.id,
+        nombre: space.nombre,
+        tipo: space.tipo,
+        capacidad: space.capacidad,
+        ubicacion: space.ubicacion,
+        descripcion: space.descripcion,
+        imagen: space.imagen_url,
+        horario: space.horario,
+        disponible: space.activo,
+        es_favorito: true
+      };
+      
+      this.openReservationModal(espacioParaModal);
+    },
     getSpaceIcon(tipo) {
       return tipo === 'Laboratorios' ? 'Monitor' : tipo === 'Canchas' ? 'Trophy' : 'Video';
     },
@@ -571,6 +767,7 @@ export default {
         const res = await fetch('/api/reservas', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Incluir cookies de sesión
           body: JSON.stringify({ espacio_id: this.selectedSpace.id })
         });
         const data = await res.json();
@@ -593,7 +790,10 @@ export default {
     async cancelReservation(resId) {
       if (!confirm('¿Cancelar esta reserva?')) return;
       try {
-        const res = await fetch(`/api/reservas/${resId}`, { method: 'DELETE' });
+        const res = await fetch(`/api/reservas/${resId}`, { 
+          method: 'DELETE',
+          credentials: 'include' // Incluir cookies de sesión
+        });
         const data = await res.json();
         if (data.success) {
           this.toastMessage = data.message;
@@ -660,7 +860,9 @@ export default {
     },
     async descargarCalendarioById(id) {
       try {
-        const res = await fetch(`/api/reservas/${id}/ics`);
+        const res = await fetch(`/api/reservas/${id}/ics`, {
+          credentials: 'include' // Incluir cookies de sesión
+        });
         if (!res.ok) {
           const data = await res.json();
           alert(data.message || 'Error');
@@ -681,7 +883,11 @@ export default {
     },
     async handleLogout() {
       try {
-        const res = await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch('/api/auth/logout', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include' // Incluir cookies de sesión
+        });
         const data = await res.json();
         if (data.success) {
           this.state.logoutUser();
@@ -696,7 +902,9 @@ export default {
       this.loadingPerfil = true;
       this.perfilError = '';
       try {
-        const res = await fetch('/api/perfil');
+        const res = await fetch('/api/perfil', {
+          credentials: 'include' // Incluir cookies de sesión
+        });
         const data = await res.json();
         if (data.success) {
           this.perfilData = data.usuario;
@@ -733,6 +941,7 @@ export default {
         const res = await fetch('/api/perfil', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Incluir cookies de sesión
           body: JSON.stringify(this.perfilForm)
         });
         const data = await res.json();
@@ -773,6 +982,7 @@ export default {
         const res = await fetch('/api/perfil/cambiar-contrasena', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Incluir cookies de sesión
           body: JSON.stringify({
             contrasena_actual: this.contrasenaForm.actual,
             nueva_contrasena: this.contrasenaForm.nueva,

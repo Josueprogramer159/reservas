@@ -38,6 +38,7 @@ export const listarEspacios = async (req, res) => {
   try {
     const configuracionReserva = await getReservationConfig();
     const fechaConsulta = configuracionReserva?.fecha || new Date().toISOString().split('T')[0];
+    const usuarioId = req.session?.userId;
 
     // Admin ve todos (activos e inactivos), usuarios solo ven activos
     const esAdmin = req.session?.role === 'admin';
@@ -55,14 +56,35 @@ export const listarEspacios = async (req, res) => {
       });
     }
 
+    // Si hay usuario autenticado, obtener sus favoritos
+    let favoritosSet = new Set();
+    if (usuarioId) {
+      const favoritosResult = await pool.query(
+        'SELECT espacio_id FROM espacios_favoritos WHERE usuario_id = $1',
+        [usuarioId]
+      );
+      favoritosSet = new Set(favoritosResult.rows.map(row => row.espacio_id));
+    }
+
     const espacios = await Promise.all(
       result.rows.map(async (row) => {
         const ocupados = await getHorariosOcupados(row.id, fechaConsulta);
-        return mapEspacio(row, ocupados, configuracionReserva);
+        const espacioMapeado = mapEspacio(row, ocupados, configuracionReserva);
+        
+        // Agregar información de favorito
+        espacioMapeado.es_favorito = favoritosSet.has(row.id);
+        
+        return espacioMapeado;
       })
     );
 
-    res.json({ success: true, espacios, fecha: fechaConsulta, configuracionReserva });
+    res.json({ 
+      success: true, 
+      espacios, 
+      fecha: fechaConsulta, 
+      configuracionReserva,
+      usuario_autenticado: !!usuarioId
+    });
   } catch (error) {
     console.error('Error al listar espacios:', error);
     res.status(500).json({ success: false, message: 'Error al consultar los espacios' });
@@ -74,6 +96,7 @@ export const obtenerEspacio = async (req, res) => {
     const { id } = req.params;
     const configuracionReserva = await getReservationConfig();
     const fechaConsulta = configuracionReserva?.fecha || new Date().toISOString().split('T')[0];
+    const usuarioId = req.session?.userId;
 
     const result = await pool.query('SELECT * FROM espacios WHERE id = $1', [id]);
 
@@ -92,11 +115,25 @@ export const obtenerEspacio = async (req, res) => {
     }
 
     const ocupados = await getHorariosOcupados(row.id, fechaConsulta);
+    const espacio = mapEspacio(row, ocupados, configuracionReserva);
+
+    // Verificar si es favorito del usuario autenticado
+    if (usuarioId) {
+      const favoritoResult = await pool.query(
+        'SELECT id FROM espacios_favoritos WHERE usuario_id = $1 AND espacio_id = $2',
+        [usuarioId, row.id]
+      );
+      espacio.es_favorito = favoritoResult.rows.length > 0;
+    } else {
+      espacio.es_favorito = false;
+    }
+
     res.json({
       success: true,
-      espacio: mapEspacio(row, ocupados, configuracionReserva),
+      espacio,
       fecha: fechaConsulta,
-      configuracionReserva
+      configuracionReserva,
+      usuario_autenticado: !!usuarioId
     });
   } catch (error) {
     console.error('Error al obtener espacio:', error);

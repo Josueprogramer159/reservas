@@ -163,7 +163,8 @@ export default {
       try {
         const response = await fetch('/api/auth/logout', { 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include' // Incluir cookies de sesión
         });
         const data = await response.json();
         if (data.success) {
@@ -178,7 +179,8 @@ export default {
       try {
         const response = await fetch('/api/admin/logout', { 
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include' // Incluir cookies de sesión
         });
         const data = await response.json();
         if (data.success) {

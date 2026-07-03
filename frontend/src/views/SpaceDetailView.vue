@@ -36,11 +36,19 @@
             {{ espacio.tipo }}
           </span>
           <span
-            class="absolute top-4 right-4 text-xs font-bold px-3 py-1.5 rounded-full"
+            class="absolute top-4 right-16 text-xs font-bold px-3 py-1.5 rounded-full"
             :class="espacio.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'"
           >
             {{ espacio.disponible ? 'Disponible' : 'No disponible' }}
           </span>
+          <div v-if="usuarioAutenticado" class="absolute top-4 right-4">
+            <FavoritoButton 
+              :espacio-id="espacio.id" 
+              :es-favorito="espacio.es_favorito" 
+              @toggle="handleFavoritoToggle"
+              @error="handleFavoritoError"
+            />
+          </div>
         </div>
 
         <div class="p-8 space-y-6">
@@ -129,10 +137,11 @@
 
 <script>
 import { ArrowLeft, MapPin, Users, Tag, AlertTriangle, Loader2 } from 'lucide-vue-next';
+import FavoritoButton from '../components/FavoritoButton.vue';
 
 export default {
   name: 'SpaceDetailView',
-  components: { ArrowLeft, MapPin, Users, Tag, AlertTriangle, Loader2 },
+  components: { ArrowLeft, MapPin, Users, Tag, AlertTriangle, Loader2, FavoritoButton },
   data() {
     return {
       espacio: null,
@@ -145,6 +154,12 @@ export default {
       submitting: false
     };
   },
+  computed: {
+    usuarioAutenticado() {
+      // Verificar si hay usuario en session storage o si hay sesión activa
+      return document.cookie.includes('connect.sid') || sessionStorage.getItem('user');
+    }
+  },
   async mounted() {
     await this.fetchEspacio();
   },
@@ -153,7 +168,9 @@ export default {
       this.loading = true;
       this.errorMessage = '';
       try {
-        const res = await fetch(`/api/espacios/${this.$route.params.id}`);
+        const res = await fetch(`/api/espacios/${this.$route.params.id}`, {
+          credentials: 'include' // Incluir cookies de sesión
+        });
         const data = await res.json();
         if (res.status === 404) {
           this.errorMessage = data.message || 'El espacio solicitado no existe';
@@ -181,6 +198,7 @@ export default {
         const res = await fetch('/api/reservas', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Incluir cookies de sesión
           body: JSON.stringify({
             espacio_id: this.espacio.id
           })
@@ -199,6 +217,23 @@ export default {
       } finally {
         this.submitting = false;
       }
+    },
+    
+    // Métodos de favoritos
+    handleFavoritoToggle(evento) {
+      // Actualizar estado local del espacio
+      if (this.espacio) {
+        this.espacio.es_favorito = evento.esFavorito;
+      }
+
+      // Mostrar mensaje
+      this.successMessage = evento.message;
+      setTimeout(() => { this.successMessage = ''; }, 6000);
+    },
+
+    handleFavoritoError(evento) {
+      this.reservationError = evento.message;
+      setTimeout(() => { this.reservationError = ''; }, 6000);
     }
   }
 };

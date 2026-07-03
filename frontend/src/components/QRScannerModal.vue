@@ -187,6 +187,7 @@ export default {
         const response = await fetch('/api/asistencias/escanear', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', // Incluir cookies de sesión
           body: JSON.stringify({ qrData: codigoQR })
         });
 
