@@ -5,93 +5,163 @@
       <div class="h-1.5 bg-[#003087]"></div>
       
       <div class="p-8">
-        <div class="text-center mb-8">
-          <h2 class="text-2xl font-bold text-slate-900">Crear Cuenta</h2>
-          <p class="text-sm text-slate-500 mt-1.5">Regístrate para reservar espacios universitarios</p>
+        <!-- PASO 1: Solicitar código de verificación -->
+        <div v-if="!codigoSolicitado">
+          <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-slate-900">Crear Cuenta</h2>
+            <p class="text-sm text-slate-500 mt-1.5">Primero verificaremos tu email con un código</p>
+          </div>
+
+          <form @submit.prevent="solicitarCodigo">
+            <!-- Correo Electrónico -->
+            <div class="mb-6">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Correo Electrónico</label>
+              <input 
+                v-model="email"
+                type="email"
+                class="form-input"
+                :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.email }"
+                placeholder="tu@email.com"
+                required
+                :disabled="loading"
+              >
+              <p v-if="errors.email" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.email }}</p>
+              <p class="text-xs text-slate-500 mt-1">Te enviaremos un código de 6 dígitos</p>
+            </div>
+
+            <!-- Alerta de Error -->
+            <div v-if="errorMessage" class="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium flex items-center space-x-2">
+              <AlertCircle class="w-5 h-5 flex-shrink-0 text-red-500" />
+              <span>{{ errorMessage }}</span>
+            </div>
+
+            <!-- Botón de Solicitar Código -->
+            <button 
+              type="submit"
+              class="w-full bg-[#003087] text-white py-3 rounded-xl hover:bg-blue-800 transition-all font-bold shadow-md hover:shadow-lg flex items-center justify-center space-x-2 active:scale-95 disabled:opacity-50"
+              :disabled="loading"
+            >
+              <span v-if="loading">Enviando código...</span>
+              <template v-else>
+                <Mail class="w-4 h-4" />
+                <span>Enviar Código de Verificación</span>
+              </template>
+            </button>
+          </form>
         </div>
 
-        <form @submit.prevent="handleRegister">
-          <!-- Nombre Completo -->
-          <div class="mb-4">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Nombre Completo</label>
-            <input 
-              v-model="nombre"
-              type="text"
-              class="form-input"
-              :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.nombre }"
-              placeholder="Juan Pérez"
-              required
-            >
-            <p v-if="errors.nombre" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.nombre }}</p>
+        <!-- PASO 2: Verificar código y completar registro -->
+        <div v-else>
+          <div class="text-center mb-8">
+            <h2 class="text-2xl font-bold text-slate-900">Verificar Email</h2>
+            <p class="text-sm text-slate-500 mt-1.5">Ingresa el código enviado a <span class="font-semibold">{{ email }}</span></p>
           </div>
 
-          <!-- Correo Electrónico -->
-          <div class="mb-4">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Correo Electrónico</label>
-            <input 
-              v-model="email"
-              type="email"
-              class="form-input"
-              :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.email }"
-              placeholder="tu@email.com"
-              required
-            >
-            <p v-if="errors.email" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.email }}</p>
+          <!-- Mostrar código generado (solo para desarrollo) -->
+          <div v-if="codigoGenerado" class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <p class="text-sm font-bold text-yellow-800 text-center">Código de verificación: <span class="text-xl tracking-wider">{{ codigoGenerado }}</span></p>
+            <p class="text-xs text-yellow-600 text-center mt-1">Guarde este código para poder reestablecer la contraseña en caso de olvido</p>
           </div>
 
-          <!-- Contraseña -->
-          <div class="mb-4">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Contraseña</label>
-            <input 
-              v-model="password"
-              type="password"
-              class="form-input"
-              :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.password }"
-              placeholder="••••••••"
-              required
-            >
-            <p v-if="errors.password" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.password }}</p>
-          </div>
+          <form @submit.prevent="completarRegistro">
+            <!-- Código de Verificación -->
+            <div class="mb-4">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Código de Verificación</label>
+              <input 
+                v-model="codigo"
+                type="text"
+                maxlength="6"
+                class="form-input text-center text-xl tracking-widest"
+                :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.codigo }"
+                placeholder="123456"
+                required
+                :disabled="loading"
+              >
+              <p v-if="errors.codigo" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.codigo }}</p>
+            </div>
 
-          <!-- Confirmar Contraseña -->
-          <div class="mb-6">
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Confirmar Contraseña</label>
-            <input 
-              v-model="confirmPassword"
-              type="password"
-              class="form-input"
-              :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.confirmPassword }"
-              placeholder="••••••••"
-              required
-            >
-            <p v-if="errors.confirmPassword" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.confirmPassword }}</p>
-          </div>
+            <!-- Nombre Completo -->
+            <div class="mb-4">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Nombre Completo</label>
+              <input 
+                v-model="nombre"
+                type="text"
+                class="form-input"
+                :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.nombre }"
+                placeholder="Juan Pérez"
+                required
+                :disabled="loading"
+              >
+              <p v-if="errors.nombre" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.nombre }}</p>
+            </div>
 
-          <!-- Alerta de Éxito -->
-          <div v-if="successMessage" class="mb-5 p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium flex items-center space-x-2">
-            <CheckCircle class="w-5 h-5 flex-shrink-0 text-emerald-500" />
-            <span>{{ successMessage }}</span>
-          </div>
+            <!-- Contraseña -->
+            <div class="mb-4">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Contraseña</label>
+              <input 
+                v-model="password"
+                type="password"
+                class="form-input"
+                :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.password }"
+                placeholder="••••••••"
+                required
+                :disabled="loading"
+              >
+              <p v-if="errors.password" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.password }}</p>
+            </div>
 
-          <!-- Alerta de Error General -->
-          <div v-if="errorMessage" class="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium flex items-center space-x-2">
-            <AlertCircle class="w-5 h-5 flex-shrink-0 text-red-500" />
-            <span>{{ errorMessage }}</span>
-          </div>
+            <!-- Confirmar Contraseña -->
+            <div class="mb-6">
+              <label class="block text-sm font-semibold text-slate-700 mb-2">Confirmar Contraseña</label>
+              <input 
+                v-model="confirmPassword"
+                type="password"
+                class="form-input"
+                :class="{ 'border-red-500 ring-2 ring-red-500/10': errors.confirmPassword }"
+                placeholder="••••••••"
+                required
+                :disabled="loading"
+              >
+              <p v-if="errors.confirmPassword" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.confirmPassword }}</p>
+            </div>
 
-          <!-- Botón de Envío -->
-          <button 
-            type="submit"
-            class="w-full bg-[#003087] text-white py-3 rounded-xl hover:bg-blue-800 transition-all font-bold shadow-md hover:shadow-lg flex items-center justify-center space-x-2 active:scale-95 disabled:opacity-50"
-            :disabled="loading"
-          >
-            <span v-if="loading">Creando cuenta...</span>
-            <template v-else>
-              <UserPlus class="w-4 h-4" />
-              <span>Registrarse</span>
-            </template>
-          </button>
-        </form>
+            <!-- Alerta de Éxito -->
+            <div v-if="successMessage" class="mb-5 p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium flex items-center space-x-2">
+              <CheckCircle class="w-5 h-5 flex-shrink-0 text-emerald-500" />
+              <span>{{ successMessage }}</span>
+            </div>
+
+            <!-- Alerta de Error -->
+            <div v-if="errorMessage" class="mb-5 p-3.5 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium flex items-center space-x-2">
+              <AlertCircle class="w-5 h-5 flex-shrink-0 text-red-500" />
+              <span>{{ errorMessage }}</span>
+            </div>
+
+            <!-- Botones -->
+            <div class="space-y-3">
+              <button 
+                type="submit"
+                class="w-full bg-[#003087] text-white py-3 rounded-xl hover:bg-blue-800 transition-all font-bold shadow-md hover:shadow-lg flex items-center justify-center space-x-2 active:scale-95 disabled:opacity-50"
+                :disabled="loading"
+              >
+                <span v-if="loading">Registrando...</span>
+                <template v-else>
+                  <UserPlus class="w-4 h-4" />
+                  <span>Completar Registro</span>
+                </template>
+              </button>
+
+              <button 
+                type="button"
+                @click="volverAlPasoAnterior"
+                class="w-full border border-slate-300 text-slate-700 py-3 rounded-xl hover:bg-slate-50 transition-all font-semibold"
+                :disabled="loading"
+              >
+                Cambiar Email
+              </button>
+            </div>
+          </form>
+        </div>
 
         <p class="mt-8 text-center text-sm text-slate-600">
           ¿Ya tienes cuenta? 
@@ -105,7 +175,7 @@
 </template>
 
 <script>
-import { UserPlus, AlertCircle, CheckCircle } from 'lucide-vue-next';
+import { UserPlus, AlertCircle, CheckCircle, Mail } from 'lucide-vue-next';
 import { authState } from '../router';
 
 export default {
@@ -113,12 +183,18 @@ export default {
   components: {
     UserPlus,
     AlertCircle,
-    CheckCircle
+    CheckCircle,
+    Mail
   },
   data() {
     return {
-      nombre: '',
+      // Paso 1: Solicitar código
       email: '',
+      codigoSolicitado: false,
+      codigoGenerado: '',
+      // Paso 2: Registro completo
+      codigo: '',
+      nombre: '',
       password: '',
       confirmPassword: '',
       errors: {},
@@ -128,12 +204,32 @@ export default {
     }
   },
   methods: {
-    validateForm() {
+    // Validación para el paso 1 (email)
+    validateEmailStep() {
+      this.errors = {};
+
+      if (!this.email.trim()) {
+        this.errorMessage = 'El correo electrónico es obligatorio';
+        return false;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(this.email.trim())) {
+        this.errors.email = 'Introduce un correo electrónico válido.';
+        return false;
+      }
+
+      this.errorMessage = '';
+      return true;
+    },
+
+    // Validación para el paso 2 (registro completo)
+    validateRegistrationStep() {
       this.errors = {};
       const camposFaltantes = [];
 
+      if (!this.codigo.trim()) camposFaltantes.push('código de verificación');
       if (!this.nombre.trim()) camposFaltantes.push('nombre');
-      if (!this.email.trim()) camposFaltantes.push('correo electrónico');
       if (!this.password) camposFaltantes.push('contraseña');
       if (!this.confirmPassword) camposFaltantes.push('confirmar contraseña');
 
@@ -144,13 +240,12 @@ export default {
 
       this.errorMessage = '';
 
-      if (this.nombre.trim().length < 2) {
-        this.errors.nombre = 'El nombre es muy corto (mínimo 2 caracteres).';
+      if (this.codigo.trim().length !== 6) {
+        this.errors.codigo = 'El código debe tener 6 dígitos.';
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(this.email)) {
-        this.errors.email = 'Introduce un correo electrónico válido.';
+      if (this.nombre.trim().length < 2) {
+        this.errors.nombre = 'El nombre es muy corto (mínimo 2 caracteres).';
       }
 
       if (this.password.length < 8) {
@@ -163,20 +258,56 @@ export default {
 
       return Object.keys(this.errors).length === 0;
     },
-    
-    async handleRegister() {
-      if (!this.validateForm()) return;
+
+    // Paso 1: Solicitar código de verificación
+    async solicitarCodigo() {
+      if (!this.validateEmailStep()) return;
       
       this.loading = true;
       this.errorMessage = '';
       
       try {
-        const response = await fetch('/api/auth/registro', {
+        const response = await fetch('/api/verification/generate-register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            nombre: this.nombre,
-            email: this.email,
+            email: this.email.trim()
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          this.codigoSolicitado = true;
+          this.codigoGenerado = data.codigo; // Solo para desarrollo
+          this.successMessage = 'Código enviado correctamente a tu email';
+          setTimeout(() => this.successMessage = '', 6000);
+        } else {
+          this.errorMessage = data.message || 'Error al enviar el código de verificación.';
+        }
+      } catch (error) {
+        console.error('Error al solicitar código:', error);
+        this.errorMessage = 'Error de conexión con el servidor.';
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    // Paso 2: Completar registro con código
+    async completarRegistro() {
+      if (!this.validateRegistrationStep()) return;
+      
+      this.loading = true;
+      this.errorMessage = '';
+      
+      try {
+        const response = await fetch('/api/verification/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: this.email.trim(),
+            codigo: this.codigo.trim(),
+            nombre: this.nombre.trim(),
             password: this.password
           })
         });
@@ -184,7 +315,7 @@ export default {
         const data = await response.json();
         
         if (data.success) {
-          authState.user = data.user;
+          authState.user = data.usuario;
           authState.admin = null;
           this.successMessage = data.message || 'Registro exitoso. Tu cuenta ha sido creada correctamente.';
           setTimeout(() => this.$router.push('/dashboard'), 1500);
@@ -192,10 +323,24 @@ export default {
           this.errorMessage = data.message || 'Error al registrar la cuenta.';
         }
       } catch (error) {
+        console.error('Error al registrar:', error);
         this.errorMessage = 'Error de conexión con el servidor.';
       } finally {
         this.loading = false;
       }
+    },
+
+    // Volver al paso anterior
+    volverAlPasoAnterior() {
+      this.codigoSolicitado = false;
+      this.codigoGenerado = '';
+      this.codigo = '';
+      this.nombre = '';
+      this.password = '';
+      this.confirmPassword = '';
+      this.errors = {};
+      this.errorMessage = '';
+      this.successMessage = '';
     }
   }
 }

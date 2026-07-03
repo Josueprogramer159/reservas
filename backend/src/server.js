@@ -13,7 +13,8 @@ import reservasRoutes from './routes/reservas.js';
 import reportesRoutes from './routes/reportes.js';
 import uploadsRoutes from './routes/uploads.js';
 import asistenciasRoutes from './routes/asistencias.js';
-import notificationsRoutes from './routes/notifications.js';
+import perfilRoutes from './routes/perfil.js';
+import verificationRoutes from './routes/verification.js';
 import { getDbErrorMessage } from './utils/dbError.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -59,7 +60,8 @@ app.use('/api/reservas', reservasRoutes);
 app.use('/api/admin/reportes', reportesRoutes);
 app.use('/api/asistencias', asistenciasRoutes);
 app.use('/api/upload', uploadsRoutes);
-app.use('/api/notifications', notificationsRoutes);
+app.use('/api/perfil', perfilRoutes);
+app.use('/api/verification', verificationRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

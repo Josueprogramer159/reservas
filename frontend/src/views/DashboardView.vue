@@ -273,25 +273,117 @@
       <div v-else-if="activeTab === 'perfil'" class="space-y-6">
         <div>
           <h1 class="text-2xl font-extrabold text-slate-900">Mi Perfil</h1>
-          <p class="text-sm text-slate-500 mt-1">Información de tu cuenta</p>
+          <p class="text-sm text-slate-500 mt-1">Gestiona tu información personal y configuración de cuenta</p>
         </div>
-        <div class="max-w-xl bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6">
-          <div class="flex items-center space-x-4">
-            <div class="w-16 h-16 rounded-2xl bg-[#003087]/5 text-[#003087] flex items-center justify-center font-bold text-2xl">{{ userInitials }}</div>
-            <div>
-              <h3 class="font-bold text-lg text-slate-900">{{ state.user?.nombre }}</h3>
-              <span class="px-2.5 py-0.5 rounded bg-blue-50 text-[#003087] border border-blue-100 font-semibold text-[10px] uppercase">Usuario</span>
+
+        <!-- Loading perfil -->
+        <div v-if="loadingPerfil" class="text-center py-12">
+          <Loader2 class="w-8 h-8 text-[#003087] animate-spin mx-auto" />
+          <p class="text-sm text-slate-500 mt-2">Cargando perfil...</p>
+        </div>
+
+        <!-- Contenido del perfil -->
+        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          <!-- Información Personal -->
+          <div class="lg:col-span-2 bg-white rounded-3xl p-8 shadow-sm border border-slate-100 space-y-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-slate-900">Información Personal</h3>
+              <button v-if="!editandoPerfil" @click="iniciarEdicionPerfil" class="text-[#003087] hover:bg-blue-50 px-3 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2">
+                <Pencil class="w-4 h-4" />
+                Editar
+              </button>
+            </div>
+
+            <div v-if="perfilError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium">{{ perfilError }}</div>
+            <div v-if="perfilSuccess" class="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">{{ perfilSuccess }}</div>
+
+            <!-- Modo Vista -->
+            <div v-if="!editandoPerfil" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Nombre</label>
+                <p class="text-sm font-semibold text-slate-800">{{ perfilData.nombre }}</p>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Correo Electrónico</label>
+                <p class="text-sm font-semibold text-slate-800">{{ perfilData.email }}</p>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Teléfono</label>
+                <p class="text-sm font-semibold text-slate-800">{{ perfilData.telefono || 'No especificado' }}</p>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Miembro desde</label>
+                <p class="text-sm font-semibold text-slate-800">{{ formatDate(perfilData.fecha_registro) }}</p>
+              </div>
+            </div>
+
+            <!-- Modo Edición -->
+            <div v-else class="space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-2">Nombre *</label>
+                  <input v-model="perfilForm.nombre" type="text" class="form-input text-sm" placeholder="Tu nombre completo">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-2">Correo Electrónico *</label>
+                  <input v-model="perfilForm.email" type="email" class="form-input text-sm" placeholder="tu@email.com">
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2">Teléfono</label>
+                <input v-model="perfilForm.telefono" type="tel" class="form-input text-sm" placeholder="Ej: +593 999 999 999">
+              </div>
+              <div class="flex gap-3 pt-2">
+                <button @click="cancelarEdicionPerfil" class="px-4 py-2 border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg hover:bg-slate-50 transition">
+                  Cancelar
+                </button>
+                <button @click="guardarPerfil" :disabled="guardandoPerfil" class="px-6 py-2 bg-[#003087] text-white text-sm font-bold rounded-lg hover:bg-blue-800 transition disabled:opacity-50">
+                  {{ guardandoPerfil ? 'Guardando...' : 'Guardar Cambios' }}
+                </button>
+              </div>
             </div>
           </div>
-          <div class="grid grid-cols-2 gap-6 pt-6 border-t border-slate-100">
-            <div>
-              <h5 class="text-xs text-slate-400 font-bold uppercase">Correo</h5>
-              <p class="text-sm font-semibold text-slate-800 mt-1.5">{{ state.user?.email }}</p>
+
+          <!-- Estadísticas y Cambio de Contraseña -->
+          <div class="space-y-6">
+            
+            <!-- Resumen de Actividad -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+              <h3 class="text-lg font-bold text-slate-900 mb-4">Resumen de Actividad</h3>
+              <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100 text-center">
+                <div class="text-3xl font-extrabold text-emerald-700">{{ estadisticas.total_reservas }}</div>
+                <div class="text-xs font-semibold text-emerald-600 uppercase mt-1">Reservas Realizadas</div>
+              </div>
             </div>
-            <div>
-              <h5 class="text-xs text-slate-400 font-bold uppercase">ID</h5>
-              <p class="text-sm font-semibold text-slate-800 mt-1.5">#{{ state.user?.id }}</p>
+
+            <!-- Cambiar Contraseña -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+              <h3 class="text-lg font-bold text-slate-900">Cambiar Contraseña</h3>
+              
+              <div v-if="contrasenaError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium">{{ contrasenaError }}</div>
+              <div v-if="contrasenaSuccess" class="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">{{ contrasenaSuccess }}</div>
+
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Contraseña Actual *</label>
+                  <input v-model="contrasenaForm.actual" type="password" class="form-input text-sm" placeholder="Tu contraseña actual">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Nueva Contraseña *</label>
+                  <input v-model="contrasenaForm.nueva" type="password" class="form-input text-sm" placeholder="Mínimo 8 caracteres">
+                </div>
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-1">Confirmar Contraseña *</label>
+                  <input v-model="contrasenaForm.confirmar" type="password" class="form-input text-sm" placeholder="Confirma la nueva contraseña">
+                </div>
+              </div>
+
+              <button @click="cambiarContrasena" :disabled="cambiandoContrasena" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-lg hover:bg-red-700 transition disabled:opacity-50 text-sm">
+                {{ cambiandoContrasena ? 'Cambiando...' : 'Cambiar Contraseña' }}
+              </button>
             </div>
+
           </div>
         </div>
       </div>
@@ -322,13 +414,13 @@
   </div>
 </template>
 <script>
-import { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode } from 'lucide-vue-next';
+import { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, Pencil } from 'lucide-vue-next';
 import { authState } from '../router';
 import QRScannerModal from '../components/QRScannerModal.vue';
 
 export default {
   name: 'DashboardView',
-  components: { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, QRScannerModal },
+  components: { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, QRScannerModal, Pencil },
   data() {
     return {
       state: authState,
@@ -352,7 +444,21 @@ export default {
       mesActual: new Date().getMonth(),
       anioActual: new Date().getFullYear(),
       celdasCalendario: [],
-      eventoSeleccionado: null
+      eventoSeleccionado: null,
+      // Gestión de perfil HU15
+      loadingPerfil: false,
+      perfilData: {},
+      estadisticas: { total_reservas: 0 },
+      editandoPerfil: false,
+      perfilForm: { nombre: '', email: '', telefono: '' },
+      perfilError: '',
+      perfilSuccess: '',
+      guardandoPerfil: false,
+      // Cambio de contraseña
+      contrasenaForm: { actual: '', nueva: '', confirmar: '' },
+      contrasenaError: '',
+      contrasenaSuccess: '',
+      cambiandoContrasena: false
     };
   },
   computed: {
@@ -381,7 +487,12 @@ export default {
     await Promise.all([this.fetchSpaces(), this.fetchMyReservations()]);
   },
   watch: {
-    myReservations() { this.construirCalendario(); }
+    myReservations() { this.construirCalendario(); },
+    activeTab(newTab) {
+      if (newTab === 'perfil') {
+        this.fetchPerfil();
+      }
+    }
   },
   methods: {
     async fetchSpaces() {
@@ -579,6 +690,117 @@ export default {
       } catch (e) {
         console.error('Error:', e);
       }
+    },
+    // Métodos de gestión de perfil HU15
+    async fetchPerfil() {
+      this.loadingPerfil = true;
+      this.perfilError = '';
+      try {
+        const res = await fetch('/api/perfil');
+        const data = await res.json();
+        if (data.success) {
+          this.perfilData = data.usuario;
+          this.estadisticas = data.estadisticas;
+        } else {
+          this.perfilError = data.message;
+        }
+      } catch (e) {
+        this.perfilError = 'Error de conexión al cargar el perfil';
+      } finally {
+        this.loadingPerfil = false;
+      }
+    },
+    iniciarEdicionPerfil() {
+      this.perfilForm = {
+        nombre: this.perfilData.nombre,
+        email: this.perfilData.email,
+        telefono: this.perfilData.telefono || ''
+      };
+      this.editandoPerfil = true;
+      this.perfilError = '';
+      this.perfilSuccess = '';
+    },
+    cancelarEdicionPerfil() {
+      this.editandoPerfil = false;
+      this.perfilForm = { nombre: '', email: '', telefono: '' };
+      this.perfilError = '';
+    },
+    async guardarPerfil() {
+      this.guardandoPerfil = true;
+      this.perfilError = '';
+      this.perfilSuccess = '';
+      try {
+        const res = await fetch('/api/perfil', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(this.perfilForm)
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.perfilData = data.usuario;
+          this.editandoPerfil = false;
+          this.perfilSuccess = data.message;
+          setTimeout(() => { this.perfilSuccess = ''; }, 6000);
+          // Actualizar estado global del usuario
+          this.state.user = { ...this.state.user, ...data.usuario };
+        } else {
+          this.perfilError = data.message;
+        }
+      } catch (e) {
+        this.perfilError = 'Error de conexión al actualizar el perfil';
+      } finally {
+        this.guardandoPerfil = false;
+      }
+    },
+    async cambiarContrasena() {
+      this.cambiandoContrasena = true;
+      this.contrasenaError = '';
+      this.contrasenaSuccess = '';
+      
+      if (!this.contrasenaForm.actual || !this.contrasenaForm.nueva || !this.contrasenaForm.confirmar) {
+        this.contrasenaError = 'Todos los campos son obligatorios';
+        this.cambiandoContrasena = false;
+        return;
+      }
+      
+      if (this.contrasenaForm.nueva !== this.contrasenaForm.confirmar) {
+        this.contrasenaError = 'Las contraseñas nuevas no coinciden';
+        this.cambiandoContrasena = false;
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/perfil/cambiar-contrasena', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contrasena_actual: this.contrasenaForm.actual,
+            nueva_contrasena: this.contrasenaForm.nueva,
+            confirmar_contrasena: this.contrasenaForm.confirmar
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          this.contrasenaSuccess = data.message;
+          this.contrasenaForm = { actual: '', nueva: '', confirmar: '' };
+          setTimeout(() => { this.contrasenaSuccess = ''; }, 6000);
+        } else {
+          this.contrasenaError = data.message;
+        }
+      } catch (e) {
+        this.contrasenaError = 'Error de conexión al cambiar la contraseña';
+      } finally {
+        this.cambiandoContrasena = false;
+      }
+    },
+    formatDate(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      return date.toLocaleDateString('es-ES', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
     }
   }
 };
