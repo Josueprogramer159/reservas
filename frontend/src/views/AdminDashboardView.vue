@@ -203,150 +203,9 @@
       </div>
     </div>
 
-    <!-- TAB: RESERVAS ACTIVAS -->
+    <!-- TAB: RESERVAS HU17 - VISUALIZACIÓN COMPLETA DE RESERVAS -->
     <div v-if="activeTab === 'reservas'" class="space-y-6">
-
-      <!-- Toast -->
-      <div v-if="toastMsg" class="p-3.5 rounded-xl text-sm font-medium" :class="toastType === 'ok' ? 'bg-emerald-50 border border-emerald-100 text-emerald-700' : 'bg-red-50 border border-red-100 text-red-700'">{{ toastMsg }}</div>
-
-      <!-- Encabezado + filtros -->
-      <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h3 class="text-lg font-bold text-slate-900">Reservas Activas</h3>
-            <p class="text-xs text-slate-500 mt-0.5">{{ reservas.length }} reserva{{ reservas.length !== 1 ? 's' : '' }} con estado <span class="font-semibold text-emerald-600">confirmado</span></p>
-          </div>
-          <button @click="fetchReservas" class="flex items-center gap-2 text-sm font-semibold text-[#003087] hover:bg-blue-50 px-4 py-2 rounded-xl transition">
-            🔄 Actualizar
-          </button>
-        </div>
-
-        <!-- Filtros -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-slate-400 mb-1">Buscar por usuario o espacio</label>
-            <input v-model="busquedaReservas" @input="fetchReservas" type="text"
-              class="form-input text-sm" placeholder="Ej: Juan Pérez, Laboratorio...">
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-400 mb-1">Filtrar por fecha</label>
-            <input v-model="filtroFechaReservas" @change="fetchReservas" type="date" class="form-input text-sm">
-          </div>
-        </div>
-        <div v-if="busquedaReservas || filtroFechaReservas" class="flex justify-end">
-          <button @click="limpiarFiltrosReservas" class="text-xs text-slate-500 hover:text-red-500 font-semibold transition">
-            ✕ Limpiar filtros
-          </button>
-        </div>
-      </div>
-
-      <!-- Tabla -->
-      <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-slate-100 text-slate-400 text-xs uppercase font-semibold bg-slate-50">
-                <th class="py-3 px-4">ID</th>
-                <th class="py-3 px-4">Usuario</th>
-                <th class="py-3 px-4">Espacio</th>
-                <th class="py-3 px-4">Tipo</th>
-                <th class="py-3 px-4">Fecha</th>
-                <th class="py-3 px-4">Horario</th>
-                <th class="py-3 px-4">Estado</th>
-                <th class="py-3 px-4 text-center">Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-if="loadingReservas">
-                <td colspan="8" class="py-12 text-center text-slate-400">
-                  <div class="flex items-center justify-center gap-2">
-                    <span class="w-4 h-4 border-2 border-[#003087] border-t-transparent rounded-full animate-spin"></span>
-                    Cargando reservas...
-                  </div>
-                </td>
-              </tr>
-              <tr v-else-if="reservas.length === 0">
-                <td colspan="8" class="py-16 text-center">
-                  <div class="space-y-2">
-                    <p class="text-3xl">📋</p>
-                    <p class="font-bold text-slate-500">No hay reservas activas</p>
-                    <p class="text-xs text-slate-400">{{ busquedaReservas || filtroFechaReservas ? 'No se encontraron resultados con ese filtro.' : 'No existen reservas confirmadas en este momento.' }}</p>
-                  </div>
-                </td>
-              </tr>
-              <tr v-for="r in reservas" :key="r.id" class="border-b border-slate-50 hover:bg-slate-50/50 transition text-sm text-slate-700">
-                <td class="py-3.5 px-4 font-semibold text-slate-400 text-xs">#{{ r.id }}</td>
-                <td class="py-3.5 px-4">
-                  <div>
-                    <p class="font-semibold text-slate-900">{{ r.usuario_nombre }}</p>
-                    <p class="text-xs text-slate-400">{{ r.usuario_email }}</p>
-                  </div>
-                </td>
-                <td class="py-3.5 px-4">
-                  <p class="font-medium text-slate-800 max-w-[180px] truncate" :title="r.espacio_nombre">{{ r.espacio_nombre }}</p>
-                  <p class="text-xs text-slate-400">{{ r.espacio_ubicacion }}</p>
-                </td>
-                <td class="py-3.5 px-4">
-                  <span class="px-2 py-0.5 rounded text-xs font-bold"
-                    :class="r.espacio_tipo === 'Laboratorios' ? 'bg-blue-50 text-blue-600' : r.espacio_tipo === 'Canchas' ? 'bg-emerald-50 text-emerald-600' : 'bg-purple-50 text-purple-600'">
-                    {{ r.espacio_tipo }}
-                  </span>
-                </td>
-                <td class="py-3.5 px-4 font-medium text-slate-700 whitespace-nowrap">{{ r.fecha }}</td>
-                <td class="py-3.5 px-4 text-slate-600 whitespace-nowrap">{{ r.horario }}</td>
-                <td class="py-3.5 px-4">
-                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    {{ r.estado }}
-                  </span>
-                </td>
-                <td class="py-3.5 px-4 text-center">
-                  <button @click="abrirCancelModal(r)"
-                    class="flex items-center gap-1.5 mx-auto text-xs font-bold text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition active:scale-95">
-                    ✕ Cancelar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL CANCELAR RESERVA (ADMIN) -->
-    <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden">
-        <div class="h-1.5 bg-red-500"></div>
-        <div class="p-6 space-y-4">
-          <div class="flex items-center gap-3">
-            <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center flex-shrink-0">
-              <Trash2 class="w-6 h-6" />
-            </div>
-            <div>
-              <h3 class="text-base font-bold text-slate-900">Cancelar Reserva</h3>
-              <p class="text-xs text-slate-500 mt-0.5">Esta acción no se puede deshacer</p>
-            </div>
-          </div>
-
-          <div class="bg-slate-50 rounded-xl p-4 space-y-1.5 text-sm">
-            <p><span class="text-slate-400 text-xs font-semibold uppercase">Usuario</span><br><span class="font-semibold text-slate-800">{{ reservaACancelar?.usuario_nombre }}</span> <span class="text-slate-400 text-xs">{{ reservaACancelar?.usuario_email }}</span></p>
-            <p><span class="text-slate-400 text-xs font-semibold uppercase">Espacio</span><br><span class="font-semibold text-slate-800">{{ reservaACancelar?.espacio_nombre }}</span></p>
-            <p><span class="text-slate-400 text-xs font-semibold uppercase">Fecha y Horario</span><br><span class="font-semibold text-slate-800">{{ reservaACancelar?.fecha }} — {{ reservaACancelar?.horario }}</span></p>
-          </div>
-
-          <div v-if="cancelError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs font-medium">{{ cancelError }}</div>
-
-          <div class="flex gap-3 pt-1">
-            <button @click="showCancelModal = false; cancelError = ''" class="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-slate-50 transition">
-              Mantener reserva
-            </button>
-            <button @click="confirmarCancelacion" :disabled="cancelando"
-              class="flex-1 bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-red-700 transition disabled:opacity-50 active:scale-95">
-              {{ cancelando ? 'Cancelando...' : 'Sí, cancelar reserva' }}
-            </button>
-          </div>
-        </div>
-      </div>
+      <AdminReservasPanel />
     </div>
 
     <!-- TAB: CONFIGURACIÓN DE RESERVAS -->
@@ -753,12 +612,13 @@
 <script>
 import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck as UserCheckIcon, ClipboardList } from 'lucide-vue-next';
 import { authState } from '../router';
+import AdminReservasPanel from '../components/AdminReservasPanel.vue';
 
 const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '' };
 
 export default {
   name: 'AdminDashboardView',
-  components: { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck: UserCheckIcon, ClipboardList },
+  components: { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck: UserCheckIcon, ClipboardList, AdminReservasPanel },
   data() {
     return {
       state: authState,
@@ -766,7 +626,7 @@ export default {
       tabs: [
         { key: 'espacios',       label: '🏛️ Gestión de Espacios' },
         { key: 'disponibilidad', label: '🔛 Control de Disponibilidad' },
-        { key: 'reservas',       label: '📋 Reservas Activas' },
+        { key: 'reservas',       label: '📊 Visualización de Reservas' },
         { key: 'usuarios',       label: '👤 Gestión de Usuarios' },
         { key: 'configuracion',  label: '⚙️ Configuración de Reservas' },
         { key: 'admins',         label: '🛡️ Administradores' }

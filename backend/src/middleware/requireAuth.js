@@ -12,5 +12,5 @@ export const requireAdminAuth = (req, res, next) => {
   next();
 };
 
-// Alias para requireUserAuth para compatibilidad
-export const requireAuth = requireUserAuth;
+// Default export para compatibilidad
+export default requireUserAuth;

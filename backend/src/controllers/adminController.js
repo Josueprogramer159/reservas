@@ -188,34 +188,97 @@ export const updateReservationSettings = async (req, res) => {
 
 export const listarReservasAdmin = async (req, res) => {
   try {
-    const { busqueda, fecha } = req.query;
+    // Parámetros de filtrado y paginación
+    const { busqueda, fechaInicio, fechaFin, espacioId, usuarioId, estado, pagina = 1, porPagina = 10 } = req.query;
+    
+    const pageNum = Math.max(1, parseInt(pagina) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(porPagina) || 10)); // Max 100 items por página
+    const offset = (pageNum - 1) * limit;
 
-    let query = `
+    let baseQuery = `
       SELECT r.id, r.fecha, r.horario, r.estado, r.fecha_creacion,
              u.id AS usuario_id, u.nombre AS usuario_nombre, u.email AS usuario_email,
-             e.id AS espacio_id, e.nombre AS espacio_nombre, e.tipo AS espacio_tipo, e.ubicacion AS espacio_ubicacion
+             e.id AS espacio_id, e.nombre AS espacio_nombre, e.tipo AS espacio_tipo, e.ubicacion AS espacio_ubicacion,
+             e.capacidad
       FROM reservas r
       JOIN usuarios u ON u.id = r.usuario_id
       JOIN espacios e ON e.id = r.espacio_id
-      WHERE r.estado = 'confirmado'
+      WHERE 1=1
     `;
     const params = [];
+    let countQuery = `SELECT COUNT(*) as total FROM reservas r JOIN usuarios u ON u.id = r.usuario_id JOIN espacios e ON e.id = r.espacio_id WHERE 1=1`;
+    let countParams = [];
 
+    // Filtro: búsqueda (usuario, email, espacio)
     if (busqueda?.trim()) {
       params.push(`%${busqueda.trim()}%`);
-      query += ` AND (u.nombre ILIKE $${params.length} OR u.email ILIKE $${params.length} OR e.nombre ILIKE $${params.length})`;
+      countParams.push(`%${busqueda.trim()}%`);
+      const searchCondition = ` AND (u.nombre ILIKE $${params.length} OR u.email ILIKE $${params.length} OR e.nombre ILIKE $${params.length})`;
+      baseQuery += searchCondition;
+      countQuery += searchCondition;
     }
 
-    if (fecha?.trim()) {
-      params.push(fecha.trim());
-      query += ` AND r.fecha = $${params.length}`;
+    // Filtro: rango de fechas
+    if (fechaInicio?.trim()) {
+      params.push(fechaInicio.trim());
+      countParams.push(fechaInicio.trim());
+      baseQuery += ` AND r.fecha >= $${params.length}`;
+      countQuery += ` AND r.fecha >= $${countParams.length}`;
     }
 
-    query += ' ORDER BY r.fecha DESC, r.horario ASC';
+    if (fechaFin?.trim()) {
+      params.push(fechaFin.trim());
+      countParams.push(fechaFin.trim());
+      baseQuery += ` AND r.fecha <= $${params.length}`;
+      countQuery += ` AND r.fecha <= $${countParams.length}`;
+    }
+
+    // Filtro: espacio específico
+    if (espacioId?.trim()) {
+      params.push(parseInt(espacioId));
+      countParams.push(parseInt(espacioId));
+      baseQuery += ` AND e.id = $${params.length}`;
+      countQuery += ` AND e.id = $${countParams.length}`;
+    }
+
+    // Filtro: usuario específico
+    if (usuarioId?.trim()) {
+      params.push(parseInt(usuarioId));
+      countParams.push(parseInt(usuarioId));
+      baseQuery += ` AND u.id = $${params.length}`;
+      countQuery += ` AND u.id = $${countParams.length}`;
+    }
+
+    // Filtro: estado (confirmado, cancelado, completado)
+    if (estado?.trim()) {
+      const estadoValues = estado.split(',').map(s => s.trim()).filter(s => ['confirmado', 'cancelado', 'completado'].includes(s));
+      if (estadoValues.length > 0) {
+        const placeholders = estadoValues.map((_, i) => `$${params.length + i + 1}`).join(',');
+        params.push(...estadoValues);
+        countParams.push(...estadoValues);
+        baseQuery += ` AND r.estado IN (${placeholders})`;
+        countQuery += ` AND r.estado IN (${placeholders})`;
+      }
+    }
+
+    // Obtener total de registros
+    const countResult = await pool.query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0].total);
+
+    // Ordenar y paginar
+    const query = baseQuery + ` ORDER BY r.fecha DESC, r.horario ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
 
     const result = await pool.query(query, params);
 
-    res.json({ success: true, reservas: result.rows, total: result.rows.length });
+    res.json({ 
+      success: true, 
+      reservas: result.rows, 
+      total: total,
+      pagina: pageNum,
+      porPagina: limit,
+      totalPaginas: Math.ceil(total / limit)
+    });
   } catch (error) {
     console.error('Error al listar reservas (admin):', error);
     res.status(500).json({ success: false, message: 'Error al consultar las reservas' });
