@@ -493,11 +493,21 @@
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1">Tipo <span class="text-red-500">*</span></label>
-                <select v-model="form.tipo" class="form-input text-sm">
+                <select v-model="form.tipo" @change="form.carrera = ''" class="form-input text-sm">
                   <option value="" disabled>Selecciona un tipo</option>
                   <option value="Laboratorios">Laboratorios</option>
                   <option value="Canchas">Canchas</option>
                   <option value="Salas">Salas</option>
+                </select>
+              </div>
+              <div v-if="form.tipo === 'Laboratorios'">
+                <label class="block text-xs font-bold text-slate-500 mb-1">Carrera <span class="text-red-500">*</span></label>
+                <select v-model="form.carrera" class="form-input text-sm">
+                  <option value="" disabled>Selecciona una carrera</option>
+                  <option value="CIYA">CIYA — Cs. de la Ingeniería y Aplicadas</option>
+                  <option value="CAREN">CAREN — Cs. Agropecuarias y Recursos Naturales</option>
+                  <option value="CAYE">CAYE — Cs. Administrativas y Económicas</option>
+                  <option value="CSAYE">CSAYE — Cs. de la Salud y Educación</option>
                 </select>
               </div>
               <div>
@@ -614,7 +624,7 @@ import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Tras
 import { authState } from '../router';
 import AdminReservasPanel from '../components/AdminReservasPanel.vue';
 
-const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '' };
+const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '', carrera: '' };
 
 export default {
   name: 'AdminDashboardView',
@@ -730,10 +740,16 @@ export default {
       this.espacioEditandoId = esp.id;
       this.imagenError = false;
       this.subiendoImagen = false;
+      // Parse carrera from ubicacion if it's a lab
+      const carreraMatch = esp.tipo === 'Laboratorios'
+        ? (esp.ubicacion || '').match(/^(CIYA|CAREN|CAYE|CSAYE)\s*[—–-]/i)
+        : null;
+      const carrera = carreraMatch ? carreraMatch[1].toUpperCase() : '';
       this.form = {
         nombre: esp.nombre, tipo: esp.tipo, capacidad: esp.capacidad,
         ubicacion: esp.ubicacion, descripcion: esp.descripcion || '',
-        imagen: esp.imagen || '', horario: esp.horario || ''
+        imagen: esp.imagen || '', horario: esp.horario || '',
+        carrera
       };
       // Si el horario no está en la lista predefinida, es personalizado
       this.horarioPersonalizado = '';
@@ -803,9 +819,22 @@ export default {
     async guardarEspacio() {
       this.guardando = true; this.formError = '';
       try {
+        // Validar carrera obligatoria para laboratorios
+        if (this.form.tipo === 'Laboratorios' && !this.form.carrera) {
+          this.formError = 'Debes seleccionar una carrera para los laboratorios.';
+          this.guardando = false;
+          return;
+        }
+        // Construir payload — embed carrera en ubicacion si es laboratorio
+        const payload = { ...this.form };
+        if (payload.tipo === 'Laboratorios' && payload.carrera) {
+          const sinCarrera = payload.ubicacion.replace(/^(CIYA|CAREN|CAYE|CSAYE)\s*[—–-]\s*/i, '').trim();
+          payload.ubicacion = `${payload.carrera} — ${sinCarrera}`;
+        }
+        delete payload.carrera;
         const url = this.editando ? `/api/espacios/${this.espacioEditandoId}` : '/api/espacios';
         const method = this.editando ? 'PUT' : 'POST';
-        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.form) });
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
         if (data.success) {
           this.showEspacioModal = false;

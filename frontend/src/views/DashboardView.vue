@@ -146,13 +146,89 @@
           </div>
 
           <!-- Empty state -->
-          <div v-if="espaciosCategoriaActiva.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
+          <div v-if="espaciosCategoriaActiva.length === 0 && activeCategory !== 'lab'" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
             <component :is="activeCategoryMeta?.icon" class="w-12 h-12 text-slate-300 mx-auto" />
             <h4 class="font-bold text-slate-600 mt-4">{{ tieneFiltros ? 'Ningún espacio coincide con los filtros' : 'No hay espacios en esta categoría' }}</h4>
             <p class="text-xs text-slate-400 mt-2">{{ tieneFiltros ? 'Intenta ajustar los filtros' : 'Contacta al administrador' }}</p>
           </div>
 
-          <!-- Space cards grid -->
+          <!-- Lab sub-categories: CIYA, CAREN, CAYE, CSAYE -->
+          <template v-else-if="activeCategory === 'lab'">
+            <!-- Sub-category tiles when none selected -->
+            <div v-if="!activeSubCategory" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <button
+                v-for="sub in subCategoriasLab"
+                :key="sub.key"
+                @click="selectSubCategory(sub.key)"
+                class="bg-white border-2 border-slate-200 rounded-2xl p-6 flex flex-col items-center gap-3 transition-all duration-200 hover:shadow-md hover:border-[#003087] focus:outline-none focus:ring-2 focus:ring-[#003087] active:scale-95 cursor-pointer"
+              >
+                <div class="w-14 h-14 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-extrabold text-lg">
+                  {{ sub.key }}
+                </div>
+                <div class="text-center">
+                  <h3 class="font-extrabold text-slate-900 text-sm">{{ sub.label }}</h3>
+                  <p class="text-[10px] text-slate-400 mt-0.5 leading-tight">{{ sub.desc }}</p>
+                  <p class="text-xs text-slate-500 mt-2">{{ sub.count }} laboratorio(s)</p>
+                  <p class="text-xs font-semibold text-blue-600 mt-0.5">{{ sub.availableCount }} disponible(s)</p>
+                </div>
+              </button>
+            </div>
+
+            <!-- Sub-category section: labs of selected carrera -->
+            <div v-else class="space-y-5">
+              <div class="flex items-center gap-3">
+                <button @click="selectSubCategory(activeSubCategory)" class="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-[#003087] hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors">
+                  <ChevronLeft class="w-4 h-4" />
+                  Volver a carreras
+                </button>
+                <div class="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm font-bold">
+                  Laboratorios — {{ activeSubCategory }}
+                </div>
+              </div>
+
+              <div v-if="espaciosSubCategoriaActiva.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
+                <Monitor class="w-12 h-12 text-slate-300 mx-auto" />
+                <h4 class="font-bold text-slate-600 mt-4">No hay laboratorios disponibles en {{ activeSubCategory }}</h4>
+                <p class="text-xs text-slate-400 mt-2">Contacta al administrador</p>
+              </div>
+
+              <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="space in espaciosSubCategoriaActiva" :key="space.id" class="card-premium overflow-hidden flex flex-col">
+                  <div class="relative overflow-hidden h-40 bg-slate-100">
+                    <img :src="space.imagen" :alt="space.nombre" class="w-full h-full object-cover" />
+                    <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
+                    <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.disponible ? 'Disponible' : 'No disponible' }}</span>
+                    <div class="absolute top-3 right-3">
+                      <FavoritoButton :espacio-id="space.id" :es-favorito="space.es_favorito" @toggle="handleFavoritoToggle" @error="handleFavoritoError" />
+                    </div>
+                  </div>
+                  <div class="p-5 flex-grow flex flex-col justify-between">
+                    <div>
+                      <h3 class="font-bold text-slate-900 text-sm mb-1">{{ space.nombre }}</h3>
+                      <p class="text-xs text-slate-500 mb-2">{{ space.descripcion }}</p>
+                      <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                        <MapPin class="w-3.5 h-3.5" /><span>{{ space.ubicacion }}</span>
+                      </div>
+                      <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                        <Users class="w-3.5 h-3.5" /><span>Cap: {{ space.capacidad }}</span>
+                      </div>
+                      <div v-if="space.horario" class="flex items-center space-x-2 text-xs text-emerald-600 mb-4 font-medium">
+                        <span>🕐</span><span>{{ space.horario }}</span>
+                      </div>
+                    </div>
+                    <div class="flex space-x-2">
+                      <router-link :to="`/espacios/${space.id}`" class="flex-1 text-center border border-[#003087] text-[#003087] text-xs font-semibold py-2.5 rounded-lg hover:bg-blue-50">Ver detalle</router-link>
+                      <button @click="openReservationModal(space)" :disabled="!space.disponible" class="flex-1 text-xs font-semibold py-2.5 rounded-lg transition" :class="space.disponible ? 'bg-[#003087] text-white hover:bg-blue-800' : 'bg-slate-200 text-slate-500'">
+                        {{ space.disponible ? 'Reservar' : 'Ocupado' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Space cards grid for non-lab categories -->
           <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="space in espaciosCategoriaActiva" :key="space.id" class="card-premium overflow-hidden flex flex-col">
               <div class="relative overflow-hidden h-40 bg-slate-100">
@@ -160,12 +236,7 @@
                 <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
                 <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.disponible ? 'Disponible' : 'No disponible' }}</span>
                 <div class="absolute top-3 right-3">
-                  <FavoritoButton
-                    :espacio-id="space.id"
-                    :es-favorito="space.es_favorito"
-                    @toggle="handleFavoritoToggle"
-                    @error="handleFavoritoError"
-                  />
+                  <FavoritoButton :espacio-id="space.id" :es-favorito="space.es_favorito" @toggle="handleFavoritoToggle" @error="handleFavoritoError" />
                 </div>
               </div>
               <div class="p-5 flex-grow flex flex-col justify-between">
@@ -173,16 +244,13 @@
                   <h3 class="font-bold text-slate-900 text-sm mb-1">{{ space.nombre }}</h3>
                   <p class="text-xs text-slate-500 mb-2">{{ space.descripcion }}</p>
                   <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
-                    <MapPin class="w-3.5 h-3.5" />
-                    <span>{{ space.ubicacion }}</span>
+                    <MapPin class="w-3.5 h-3.5" /><span>{{ space.ubicacion }}</span>
                   </div>
                   <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
-                    <Users class="w-3.5 h-3.5" />
-                    <span>Cap: {{ space.capacidad }}</span>
+                    <Users class="w-3.5 h-3.5" /><span>Cap: {{ space.capacidad }}</span>
                   </div>
                   <div v-if="space.horario" class="flex items-center space-x-2 text-xs text-emerald-600 mb-4 font-medium">
-                    <span>🕐</span>
-                    <span>{{ space.horario }}</span>
+                    <span>🕐</span><span>{{ space.horario }}</span>
                   </div>
                 </div>
                 <div class="flex space-x-2">
@@ -196,8 +264,6 @@
           </div>
         </div>
       </div>
-
-      <!-- TAB: MIS ESPACIOS -->
       <div v-else-if="activeTab === 'mis-espacios'" class="space-y-6">
         <div>
           <h1 class="text-2xl font-extrabold text-slate-900">Mis Espacios Reservados</h1>
@@ -590,7 +656,8 @@ export default {
       cambiandoContrasena: false,
       // Category panel state
       activeCategory: null,
-      _savedCategory: null
+      _savedCategory: null,
+      activeSubCategory: null
     };
   },
   computed: {
@@ -632,6 +699,29 @@ export default {
     espaciosCategoriaActiva() {
       if (!this.activeCategory || !this.activeCategoryMeta) return [];
       return this.espaciosFiltrados.filter(s => s.tipo === this.activeCategoryMeta.backendTipo);
+    },
+    subCategoriasLab() {
+      const carreras = [
+        { key: 'CIYA',  label: 'CIYA',  desc: 'Cs. de la Ingeniería y Aplicadas' },
+        { key: 'CAREN', label: 'CAREN', desc: 'Cs. Agropecuarias y Recursos Naturales' },
+        { key: 'CAYE',  label: 'CAYE',  desc: 'Cs. Administrativas y Económicas' },
+        { key: 'CSAYE', label: 'CSAYE', desc: 'Cs. de la Salud y Educación' }
+      ];
+      return carreras.map(c => ({
+        ...c,
+        count: this.spaces.filter(s => s.tipo === 'Laboratorios' &&
+          (s.nombre.toUpperCase().includes(c.key) || s.ubicacion.toUpperCase().includes(c.key))).length,
+        availableCount: this.spaces.filter(s => s.tipo === 'Laboratorios' && s.disponible &&
+          (s.nombre.toUpperCase().includes(c.key) || s.ubicacion.toUpperCase().includes(c.key))).length
+      }));
+    },
+    espaciosSubCategoriaActiva() {
+      if (!this.activeSubCategory) return [];
+      return this.espaciosFiltrados.filter(s =>
+        s.tipo === 'Laboratorios' &&
+        (s.nombre.toUpperCase().includes(this.activeSubCategory) ||
+         s.ubicacion.toUpperCase().includes(this.activeSubCategory))
+      );
     }
   },
   async mounted() {
@@ -717,7 +807,11 @@ export default {
         this.activeCategory = key;
         this.filtros.tipo = this.categoriasPanel.find(c => c.key === key)?.backendTipo || '';
       }
+      this.activeSubCategory = null;
       this.aplicarFiltros();
+    },
+    selectSubCategory(key) {
+      this.activeSubCategory = this.activeSubCategory === key ? null : key;
     },
     aplicarFiltros() {
       this.espaciosFiltrados = this.spaces.filter(space => {
