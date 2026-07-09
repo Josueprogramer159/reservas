@@ -54,39 +54,6 @@
           <p class="text-sm text-slate-500 mt-1">Explora y selecciona el espacio disponible según la categoría requerida</p>
         </div>
 
-        <!-- Search & Filters -->
-        <div class="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
-          <h3 class="font-bold text-slate-900 text-sm">Buscar y Filtrar</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Nombre</label>
-              <input v-model="filtros.nombre" type="text" placeholder="Ej: Laboratorio..." @input="aplicarFiltros" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Tipo</label>
-              <select v-model="filtros.tipo" @change="aplicarFiltros" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087] bg-white">
-                <option value="">Todos</option>
-                <option value="Laboratorios">Laboratorios</option>
-                <option value="Canchas">Canchas</option>
-                <option value="Salas">Salas</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Cap. Min</label>
-              <input v-model.number="filtros.capacidad_min" type="number" placeholder="Ej: 10" @input="aplicarFiltros" min="0" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Cap. Max</label>
-              <input v-model.number="filtros.capacidad_max" type="number" placeholder="Ej: 50" @input="aplicarFiltros" min="0" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
-            </div>
-          </div>
-          <div class="flex gap-3 pt-2">
-            <button @click="limpiarFiltros" class="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition active:scale-95">Limpiar Filtros</button>
-            <div class="flex-1"></div>
-            <span class="text-xs text-slate-500 font-medium">{{ espaciosFiltrados.length }} espacio(s) encontrado(s)</span>
-          </div>
-        </div>
-
         <!-- Toast -->
         <div v-if="toastMessage" class="p-3.5 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">{{ toastMessage }}</div>
 
@@ -98,60 +65,136 @@
         <!-- Error -->
         <div v-else-if="spacesError" class="p-6 bg-red-50 border border-red-100 rounded-2xl text-red-700 text-sm">{{ spacesError }}</div>
 
-        <!-- No Results -->
-        <div v-else-if="espaciosFiltrados.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
-          <CalendarRange class="w-12 h-12 text-slate-300 mx-auto" />
-          <h4 class="font-bold text-slate-600 mt-4">{{ tieneFiltros ? 'No se encontraron espacios' : 'No existen espacios' }}</h4>
-          <p class="text-xs text-slate-400 mt-2">{{ tieneFiltros ? 'Intenta ajustar los filtros' : 'Contacta al administrador' }}</p>
+        <!-- Category_Panel: shown when no category is selected -->
+        <div v-else-if="!activeCategory" class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <button
+            v-for="cat in categoriasPanel"
+            :key="cat.key"
+            @click="selectCategory(cat.key)"
+            class="relative bg-white border-2 rounded-2xl p-8 flex flex-col items-center gap-4 transition-all duration-200 hover:shadow-md hover:border-[#003087] focus:outline-none focus:ring-2 focus:ring-[#003087]"
+            :class="spacesError ? 'opacity-50 pointer-events-none cursor-not-allowed border-slate-200' : 'border-slate-200 cursor-pointer active:scale-95'"
+          >
+            <div class="p-4 rounded-2xl" :class="{
+              'bg-blue-50 text-blue-600': cat.color === 'blue',
+              'bg-emerald-50 text-emerald-600': cat.color === 'emerald',
+              'bg-purple-50 text-purple-600': cat.color === 'purple'
+            }">
+              <component :is="cat.icon" class="w-10 h-10" />
+            </div>
+            <div class="text-center">
+              <h3 class="font-extrabold text-slate-900 text-base">{{ cat.label }}</h3>
+              <p class="text-xs text-slate-500 mt-1">{{ spacesError ? '—' : cat.count }} espacios</p>
+              <p class="text-xs font-semibold mt-1" :class="{
+                'text-blue-600': cat.color === 'blue',
+                'text-emerald-600': cat.color === 'emerald',
+                'text-purple-600': cat.color === 'purple'
+              }">{{ spacesError ? '—' : cat.availableCount }} disponibles</p>
+            </div>
+          </button>
         </div>
 
-        <!-- Results -->
-        <template v-else>
-          <div v-for="cat in categoriasFiltradas" :key="cat.key" class="space-y-4">
-            <h2 v-if="cat.spaces.length > 0" class="text-lg font-bold text-[#003087]">{{ cat.label }}</h2>
-            <div v-if="cat.spaces.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div v-for="space in cat.spaces" :key="space.id" class="card-premium overflow-hidden flex flex-col">
-                <div class="relative overflow-hidden h-40 bg-slate-100">
-                  <img :src="space.imagen" :alt="space.nombre" class="w-full h-full object-cover" />
-                  <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
-                  <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.disponible ? 'Disponible' : 'No disponible' }}</span>
-                  <div class="absolute top-3 right-3">
-                    <FavoritoButton 
-                      :espacio-id="space.id" 
-                      :es-favorito="space.es_favorito" 
-                      @toggle="handleFavoritoToggle"
-                      @error="handleFavoritoError"
-                    />
+        <!-- Category_Section: shown when a category is selected -->
+        <div v-else class="space-y-6">
+          <!-- Header with back button and filters -->
+          <div class="flex flex-col gap-4">
+            <div class="flex items-center gap-3">
+              <button @click="selectCategory(activeCategory)" class="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-[#003087] hover:bg-slate-100 px-3 py-2 rounded-lg transition-colors">
+                <ChevronLeft class="w-4 h-4" />
+                Volver a categorías
+              </button>
+              <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold" :class="{
+                'bg-blue-50 text-blue-700': activeCategoryMeta?.color === 'blue',
+                'bg-emerald-50 text-emerald-700': activeCategoryMeta?.color === 'emerald',
+                'bg-purple-50 text-purple-700': activeCategoryMeta?.color === 'purple'
+              }">
+                <component :is="activeCategoryMeta?.icon" class="w-4 h-4" />
+                {{ activeCategoryMeta?.label }}
+              </div>
+            </div>
+
+            <!-- Filters scoped to active category -->
+            <div class="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm space-y-4">
+              <h3 class="font-bold text-slate-900 text-sm">Buscar y Filtrar</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Nombre</label>
+                  <input v-model="filtros.nombre" type="text" placeholder="Ej: Laboratorio..." @input="aplicarFiltros" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Tipo</label>
+                  <span class="flex items-center w-full px-3 py-2 rounded-lg text-sm font-semibold" :class="{
+                    'bg-blue-50 text-blue-700': activeCategoryMeta?.color === 'blue',
+                    'bg-emerald-50 text-emerald-700': activeCategoryMeta?.color === 'emerald',
+                    'bg-purple-50 text-purple-700': activeCategoryMeta?.color === 'purple'
+                  }">{{ activeCategoryMeta?.label }}</span>
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Cap. Min</label>
+                  <input v-model.number="filtros.capacidad_min" type="number" placeholder="Ej: 10" @input="aplicarFiltros" min="0" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-600 mb-2 uppercase">Cap. Max</label>
+                  <input v-model.number="filtros.capacidad_max" type="number" placeholder="Ej: 50" @input="aplicarFiltros" min="0" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#003087]" />
+                </div>
+              </div>
+              <div class="flex gap-3 pt-2">
+                <button @click="limpiarFiltros" class="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition active:scale-95">Limpiar Filtros</button>
+                <div class="flex-1"></div>
+                <span class="text-xs text-slate-500 font-medium">{{ espaciosCategoriaActiva.length }} espacio(s) encontrado(s)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty state -->
+          <div v-if="espaciosCategoriaActiva.length === 0" class="text-center py-16 bg-white rounded-3xl border border-slate-100">
+            <component :is="activeCategoryMeta?.icon" class="w-12 h-12 text-slate-300 mx-auto" />
+            <h4 class="font-bold text-slate-600 mt-4">{{ tieneFiltros ? 'Ningún espacio coincide con los filtros' : 'No hay espacios en esta categoría' }}</h4>
+            <p class="text-xs text-slate-400 mt-2">{{ tieneFiltros ? 'Intenta ajustar los filtros' : 'Contacta al administrador' }}</p>
+          </div>
+
+          <!-- Space cards grid -->
+          <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-for="space in espaciosCategoriaActiva" :key="space.id" class="card-premium overflow-hidden flex flex-col">
+              <div class="relative overflow-hidden h-40 bg-slate-100">
+                <img :src="space.imagen" :alt="space.nombre" class="w-full h-full object-cover" />
+                <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
+                <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.disponible ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.disponible ? 'Disponible' : 'No disponible' }}</span>
+                <div class="absolute top-3 right-3">
+                  <FavoritoButton
+                    :espacio-id="space.id"
+                    :es-favorito="space.es_favorito"
+                    @toggle="handleFavoritoToggle"
+                    @error="handleFavoritoError"
+                  />
+                </div>
+              </div>
+              <div class="p-5 flex-grow flex flex-col justify-between">
+                <div>
+                  <h3 class="font-bold text-slate-900 text-sm mb-1">{{ space.nombre }}</h3>
+                  <p class="text-xs text-slate-500 mb-2">{{ space.descripcion }}</p>
+                  <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                    <MapPin class="w-3.5 h-3.5" />
+                    <span>{{ space.ubicacion }}</span>
+                  </div>
+                  <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
+                    <Users class="w-3.5 h-3.5" />
+                    <span>Cap: {{ space.capacidad }}</span>
+                  </div>
+                  <div v-if="space.horario" class="flex items-center space-x-2 text-xs text-emerald-600 mb-4 font-medium">
+                    <span>🕐</span>
+                    <span>{{ space.horario }}</span>
                   </div>
                 </div>
-                <div class="p-5 flex-grow flex flex-col justify-between">
-                  <div>
-                    <h3 class="font-bold text-slate-900 text-sm mb-1">{{ space.nombre }}</h3>
-                    <p class="text-xs text-slate-500 mb-2">{{ space.descripcion }}</p>
-                    <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
-                      <MapPin class="w-3.5 h-3.5" />
-                      <span>{{ space.ubicacion }}</span>
-                    </div>
-                    <div class="flex items-center space-x-2 text-xs text-slate-400 mb-1">
-                      <Users class="w-3.5 h-3.5" />
-                      <span>Cap: {{ space.capacidad }}</span>
-                    </div>
-                    <div v-if="space.horario" class="flex items-center space-x-2 text-xs text-emerald-600 mb-4 font-medium">
-                      <span>🕐</span>
-                      <span>{{ space.horario }}</span>
-                    </div>
-                  </div>
-                  <div class="flex space-x-2">
-                    <router-link :to="`/espacios/${space.id}`" class="flex-1 text-center border border-[#003087] text-[#003087] text-xs font-semibold py-2.5 rounded-lg hover:bg-blue-50">Ver detalle</router-link>
-                    <button @click="openReservationModal(space)" :disabled="!space.disponible" class="flex-1 text-xs font-semibold py-2.5 rounded-lg transition" :class="space.disponible ? 'bg-[#003087] text-white hover:bg-blue-800' : 'bg-slate-200 text-slate-500'">
-                      {{ space.disponible ? 'Reservar' : 'Ocupado' }}
-                    </button>
-                  </div>
+                <div class="flex space-x-2">
+                  <router-link :to="`/espacios/${space.id}`" class="flex-1 text-center border border-[#003087] text-[#003087] text-xs font-semibold py-2.5 rounded-lg hover:bg-blue-50">Ver detalle</router-link>
+                  <button @click="openReservationModal(space)" :disabled="!space.disponible" class="flex-1 text-xs font-semibold py-2.5 rounded-lg transition" :class="space.disponible ? 'bg-[#003087] text-white hover:bg-blue-800' : 'bg-slate-200 text-slate-500'">
+                    {{ space.disponible ? 'Reservar' : 'Ocupado' }}
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        </template>
+        </div>
       </div>
 
       <!-- TAB: MIS ESPACIOS -->
@@ -544,7 +587,10 @@ export default {
       contrasenaForm: { actual: '', nueva: '', confirmar: '' },
       contrasenaError: '',
       contrasenaSuccess: '',
-      cambiandoContrasena: false
+      cambiandoContrasena: false,
+      // Category panel state
+      activeCategory: null,
+      _savedCategory: null
     };
   },
   computed: {
@@ -567,6 +613,25 @@ export default {
         { key: 'canchas', label: '⚽ Canchas', icon: 'Trophy', spaces: this.canchas },
         { key: 'salas', label: '🏛️ Salas', icon: 'Video', spaces: this.salas }
       ];
+    },
+    categoriasPanel() {
+      return [
+        { key: 'lab',     backendTipo: 'Laboratorios', label: 'Laboratorios',        icon: 'Monitor', color: 'blue'    },
+        { key: 'canchas', backendTipo: 'Canchas',       label: 'Canchas',             icon: 'Trophy',  color: 'emerald' },
+        { key: 'salas',   backendTipo: 'Salas',         label: 'Salas de Auditorio',  icon: 'Video',   color: 'purple'  }
+      ].map(cat => ({
+        ...cat,
+        count: this.spaces.filter(s => s.tipo === cat.backendTipo).length,
+        availableCount: this.spaces.filter(s => s.tipo === cat.backendTipo && s.disponible).length
+      }));
+    },
+    activeCategoryMeta() {
+      if (!this.activeCategory) return null;
+      return this.categoriasPanel.find(c => c.key === this.activeCategory) || null;
+    },
+    espaciosCategoriaActiva() {
+      if (!this.activeCategory || !this.activeCategoryMeta) return [];
+      return this.espaciosFiltrados.filter(s => s.tipo === this.activeCategoryMeta.backendTipo);
     }
   },
   async mounted() {
@@ -574,7 +639,15 @@ export default {
   },
   watch: {
     myReservations() { this.construirCalendario(); },
-    activeTab(newTab) {
+    activeTab(newTab, oldTab) {
+      if (oldTab === 'reservas') {
+        this._savedCategory = this.activeCategory;
+      }
+      if (newTab === 'reservas' && this._savedCategory) {
+        this.$nextTick(() => {
+          this.selectCategory(this._savedCategory);
+        });
+      }
       if (newTab === 'perfil') {
         this.fetchPerfil();
       } else if (newTab === 'favoritos') {
@@ -636,6 +709,16 @@ export default {
         }
       }
     },
+    selectCategory(key) {
+      if (this.activeCategory === key) {
+        this.activeCategory = null;
+        this.filtros.tipo = '';
+      } else {
+        this.activeCategory = key;
+        this.filtros.tipo = this.categoriasPanel.find(c => c.key === key)?.backendTipo || '';
+      }
+      this.aplicarFiltros();
+    },
     aplicarFiltros() {
       this.espaciosFiltrados = this.spaces.filter(space => {
         if (this.filtros.nombre.trim() && !space.nombre.toLowerCase().includes(this.filtros.nombre.toLowerCase())) return false;
@@ -646,8 +729,13 @@ export default {
       });
     },
     limpiarFiltros() {
-      this.filtros = { nombre: '', tipo: '', capacidad_min: null, capacidad_max: null };
-      this.espaciosFiltrados = this.spaces;
+      this.filtros = {
+        nombre: '',
+        tipo: this.activeCategory ? (this.activeCategoryMeta?.backendTipo || '') : '',
+        capacidad_min: null,
+        capacidad_max: null
+      };
+      this.aplicarFiltros();
     },
     
     // Métodos de favoritos HU16
