@@ -383,19 +383,19 @@
             <div v-if="!editandoPerfil" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Nombre</label>
-                <p class="text-sm font-semibold text-slate-800">{{ perfilData.nombre }}</p>
+                <p class="text-sm font-semibold text-slate-800">{{ perfilData?.nombre || 'No disponible' }}</p>
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Correo Electrónico</label>
-                <p class="text-sm font-semibold text-slate-800">{{ perfilData.email }}</p>
+                <p class="text-sm font-semibold text-slate-800">{{ perfilData?.email || 'No disponible' }}</p>
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Teléfono</label>
-                <p class="text-sm font-semibold text-slate-800">{{ perfilData.telefono || 'No especificado' }}</p>
+                <p class="text-sm font-semibold text-slate-800">{{ perfilData?.telefono || 'No especificado' }}</p>
               </div>
               <div>
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Miembro desde</label>
-                <p class="text-sm font-semibold text-slate-800">{{ formatDate(perfilData.fecha_registro) }}</p>
+                <p class="text-sm font-semibold text-slate-800">{{ formatDate(perfilData?.fecha_registro || perfilData?.created_at) }}</p>
               </div>
             </div>
 
@@ -907,12 +907,15 @@ export default {
         });
         const data = await res.json();
         if (data.success) {
-          this.perfilData = data.usuario;
-          this.estadisticas = data.estadisticas;
+          this.perfilData = data.usuario || {};
+          this.estadisticas = data.estadisticas || { total_reservas: 0 };
+          this.perfilError = '';
         } else {
-          this.perfilError = data.message;
+          this.perfilData = {};
+          this.perfilError = data.message || 'No se pudo cargar el perfil';
         }
       } catch (e) {
+        this.perfilData = {};
         this.perfilError = 'Error de conexión al cargar el perfil';
       } finally {
         this.loadingPerfil = false;
@@ -920,9 +923,9 @@ export default {
     },
     iniciarEdicionPerfil() {
       this.perfilForm = {
-        nombre: this.perfilData.nombre,
-        email: this.perfilData.email,
-        telefono: this.perfilData.telefono || ''
+        nombre: this.perfilData?.nombre || '',
+        email: this.perfilData?.email || '',
+        telefono: this.perfilData?.telefono || ''
       };
       this.editandoPerfil = true;
       this.perfilError = '';

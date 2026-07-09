@@ -60,7 +60,15 @@
           <form @submit.prevent="restablecerContraseña">
             <!-- Código de Verificación -->
             <div class="mb-4">
-              <label class="block text-sm font-semibold text-slate-700 mb-2">Código de Registro</label>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-semibold text-slate-700">Código de Registro</label>
+                <button
+                  type="button"
+                  @click="mostrarModalCodigoOlvidado = true"
+                  class="text-xs text-[#003087] hover:text-blue-700 font-semibold underline transition">
+                  ¿Olvidaste tu código?
+                </button>
+              </div>
               <input 
                 v-model="codigo"
                 type="text"
@@ -152,6 +160,88 @@
         </p>
       </div>
     </div>
+
+    <!-- MODAL: CÓDIGO OLVIDADO -->
+    <div v-if="mostrarModalCodigoOlvidado" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full overflow-hidden transform transition-all duration-300">
+        <!-- Header con acento de color -->
+        <div class="h-1.5 bg-gradient-to-r from-amber-500 to-orange-500"></div>
+        
+        <div class="p-8">
+          <!-- Icono -->
+          <div class="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+          </div>
+
+          <!-- Contenido -->
+          <h3 class="text-xl font-bold text-slate-900 text-center mb-2">¿Olvidaste tu código?</h3>
+          <p class="text-sm text-slate-600 text-center mb-6">
+            Si no tienes el código de verificación que recibiste al registrarte, ponte en contacto con nuestro equipo de soporte.
+          </p>
+
+          <!-- Información de contacto -->
+          <div class="bg-slate-50 rounded-xl p-4 mb-6 border border-slate-200">
+            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Información de Contacto</p>
+            
+            <!-- Email -->
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+              <div class="flex-1">
+                <p class="text-xs text-slate-500 font-semibold">Correo Electrónico</p>
+                <a href="mailto:josuelema799@gmail.com" class="text-sm font-bold text-blue-600 hover:text-blue-700 underline transition">
+                  josuelema799@gmail.com
+                </a>
+              </div>
+            </div>
+
+            <!-- Instrucciones -->
+            <div class="pt-3 border-t border-slate-200">
+              <p class="text-xs text-slate-600 font-medium">
+                <span class="font-bold">Pasos a seguir:</span>
+              </p>
+              <ol class="text-xs text-slate-600 mt-2 space-y-1.5 list-decimal list-inside">
+                <li>Envía un email a la dirección de arriba</li>
+                <li>Incluye tu correo de registro</li>
+                <li>Confirma tu identidad</li>
+                <li>Recibirás tu código en la respuesta</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Nota importante -->
+          <div class="bg-blue-50 border border-blue-100 rounded-xl p-3 mb-6">
+            <p class="text-xs text-blue-700 font-medium">
+              <span class="font-bold">💡 Consejo:</span> Por tu seguridad, verificamos tu identidad antes de proporcionar el código.
+            </p>
+          </div>
+
+          <!-- Botones -->
+          <div class="space-y-2">
+            <a 
+              href="mailto:josuelema799@gmail.com?subject=Recuperación%20de%20Código%20de%20Registro&body=Hola,%0A%0AHe%20olvidado%20mi%20código%20de%20registro%20y%20necesito%20ayuda%20para%20recuperar%20mi%20contraseña.%0A%0AMi%20correo%20de%20registro%20es:%20"
+              class="w-full bg-blue-600 text-white py-3 rounded-xl hover:bg-blue-700 transition-all font-bold shadow-md hover:shadow-lg flex items-center justify-center space-x-2 active:scale-95">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+              </svg>
+              <span>Enviar Email a Soporte</span>
+            </a>
+
+            <button 
+              type="button"
+              @click="mostrarModalCodigoOlvidado = false"
+              class="w-full border border-slate-300 text-slate-700 py-3 rounded-xl hover:bg-slate-50 transition-all font-semibold">
+              Volver
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -178,7 +268,9 @@ export default {
       errors: {},
       errorMessage: '',
       successMessage: '',
-      loading: false
+      loading: false,
+      // Modal código olvidado
+      mostrarModalCodigoOlvidado: false
     }
   },
   methods: {

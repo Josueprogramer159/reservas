@@ -198,7 +198,20 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS notificaciones_activas BOOLEAN DEFAULT true;
     `);
 
-    // 9. Tabla de suscripciones de notificaciones
+    // 9. Tabla de códigos de verificación
+    console.log('Creando tabla de códigos de verificación...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS verification_codes (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) NOT NULL,
+        code VARCHAR(10) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_verification_codes_email ON verification_codes(email);`);
+
+    // 10. Tabla de suscripciones de notificaciones
     console.log('Creando tabla de suscripciones de notificaciones...');
     await pool.query(`
       CREATE TABLE IF NOT EXISTS user_push_subscriptions (
@@ -215,7 +228,21 @@ async function initDb() {
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user ON user_push_subscriptions(usuario_id);`);
 
-    // 10. Insertar espacios semilla
+    // 10. Tabla de favoritos de usuarios
+    console.log('Creando tabla de favoritos...');
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS espacios_favoritos (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
+        espacio_id INTEGER NOT NULL REFERENCES espacios(id) ON DELETE CASCADE,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(usuario_id, espacio_id)
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_espacios_favoritos_usuario ON espacios_favoritos(usuario_id);`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_espacios_favoritos_espacio ON espacios_favoritos(espacio_id);`);
+
+    // 11. Insertar espacios semilla
     console.log('Insertando espacios semilla...');
     const espaciosSemilla = [
       ['Laboratorio de Computación Avanzada B3', 'Laboratorios', 30, 'Bloque B, Segundo Piso', 'Equipado con 30 ordenadores de alto rendimiento e internet de fibra óptica.', 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&q=80&w=600', 'Incluye proyector, aire acondicionado y acceso WiFi de alta velocidad.'],
