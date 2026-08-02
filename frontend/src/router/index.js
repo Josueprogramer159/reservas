@@ -9,6 +9,9 @@ import SpaceDetailView from '../views/SpaceDetailView.vue'
 import GuestDashboardView from '../views/GuestDashboardView.vue'
 import RecuperarPasswordView from '../views/RecuperarPasswordView.vue'
 import AdminReportesView from '../views/AdminReportesView.vue'
+import CategoriesView from '../views/CategoriesView.vue'
+import SpacesByCategoryView from '../views/SpacesByCategoryView.vue'
+import ReservaView from '../views/ReservaView.vue'
 import { reactive } from 'vue'
 
 // Estado de sesión reactivo y compartido
@@ -91,9 +94,34 @@ const routes = [
     meta: { requiresAuth: true, role: 'user' }
   },
   {
+    path: '/categorias',
+    name: 'Categories',
+    component: CategoriesView,
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/categorias/:categoria',
+    name: 'SpacesByCategory',
+    component: SpacesByCategoryView,
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
     path: '/espacios/:id',
     name: 'SpaceDetail',
-    component: SpaceDetailView
+    component: SpaceDetailView,
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/espacios/:id/reservar',
+    name: 'Reserva',
+    component: ReservaView,
+    meta: { requiresAuth: true, role: 'user' }
+  },
+  {
+    path: '/espacios/:id/reservar',
+    name: 'Reserva',
+    component: ReservaView,
+    meta: { requiresAuth: true, role: 'user' }
   },
   { 
     path: '/admin-login', 

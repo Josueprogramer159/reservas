@@ -21,17 +21,17 @@ export default {
       type: [String, Number],
       required: true
     },
-    initialFavorito: {
+    esFavorito: {
       type: Boolean,
       default: false
     }
   },
-  emits: ['toggle-favorito'],
+  emits: ['toggle'],
   setup(props, { emit }) {
-    const isFavorito = ref(props.initialFavorito);
+    const isFavorito = ref(props.esFavorito);
     const isLoading = ref(false);
 
-    watch(() => props.initialFavorito, (newVal) => {
+    watch(() => props.esFavorito, (newVal) => {
       isFavorito.value = newVal;
     });
 
@@ -40,26 +40,28 @@ export default {
 
       try {
         isLoading.value = true;
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 
         if (isFavorito.value) {
-          // Quitar de favoritos
-          await fetch(`${apiUrl}/api/usuario/favoritos/${props.espacioId}`, {
+          // Quitar de favoritos - DELETE /api/usuario/favoritos/:espacioId
+          await fetch(`/api/usuario/favoritos/${props.espacioId}`, {
             method: 'DELETE',
             credentials: 'include'
           });
         } else {
-          // Agregar a favoritos
-          await fetch(`${apiUrl}/api/usuario/favoritos`, {
+          // Agregar a favoritos - POST /api/usuario/favoritos/:espacioId
+          await fetch(`/api/usuario/favoritos/${props.espacioId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ espacio_id: props.espacioId })
+            credentials: 'include'
           });
         }
 
         isFavorito.value = !isFavorito.value;
-        emit('toggle-favorito', isFavorito.value);
+        emit('toggle', {
+          espacioId: props.espacioId,
+          esFavorito: isFavorito.value,
+          message: isFavorito.value ? 'Agregado a favoritos' : 'Removido de favoritos'
+        });
       } catch (error) {
         console.error('Error al cambiar favorito:', error);
       } finally {

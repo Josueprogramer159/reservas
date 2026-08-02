@@ -478,112 +478,141 @@
 
     <!-- MODAL CREAR / EDITAR ESPACIO -->
     <div v-if="showEspacioModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-lg overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
         <div class="h-1.5 bg-[#003087]"></div>
         <div class="p-6">
           <h3 class="text-lg font-bold text-slate-900 mb-5">{{ editando ? 'Editar Espacio' : 'Nuevo Espacio' }}</h3>
 
           <div v-if="formError" class="mb-4 p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs font-medium">{{ formError }}</div>
 
-          <div class="grid grid-cols-1 gap-4">
+          <div class="space-y-4">
+            <!-- Nombre (ancho completo) -->
             <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Nombre <span class="text-red-500">*</span></label>
-              <input v-model="form.nombre" type="text" class="form-input text-sm" placeholder="Ej: Laboratorio de Computación B3" maxlength="200">
+              <input v-model="form.nombre" type="text" class="form-input text-sm w-full" placeholder="Ej: Laboratorio de Computación B3" maxlength="200">
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+            <!-- Fila 1: Tipo, Facultad (si Laboratorios), Capacidad, Horario -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
               <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1">Tipo <span class="text-red-500">*</span></label>
-                <select v-model="form.tipo" @change="form.carrera = ''" class="form-input text-sm">
-                  <option value="" disabled>Selecciona un tipo</option>
+                <select v-model="form.tipo" class="form-input text-sm w-full">
+                  <option value="" disabled>Selecciona</option>
                   <option value="Laboratorios">Laboratorios</option>
                   <option value="Canchas">Canchas</option>
                   <option value="Salas">Salas</option>
                 </select>
               </div>
               <div v-if="form.tipo === 'Laboratorios'">
-                <label class="block text-xs font-bold text-slate-500 mb-1">Carrera <span class="text-red-500">*</span></label>
-                <select v-model="form.carrera" class="form-input text-sm">
-                  <option value="" disabled>Selecciona una carrera</option>
-                  <option value="CIYA">CIYA — Cs. de la Ingeniería y Aplicadas</option>
-                  <option value="CAREN">CAREN — Cs. Agropecuarias y Recursos Naturales</option>
-                  <option value="CAYE">CAYE — Cs. Administrativas y Económicas</option>
-                  <option value="CSAYE">CSAYE — Cs. de la Salud y Educación</option>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Facultad <span class="text-red-500">*</span></label>
+                <select v-model="form.facultad" class="form-input text-sm w-full">
+                  <option value="" disabled>Selecciona</option>
+                  <option value="CIYA">CIYA - Cs. Ingeniería y Aplicadas</option>
+                  <option value="CAREN">CAREN - Cs. Agropecuarias</option>
+                  <option value="CAYE">CAYE - Cs. Administrativas y Económicas</option>
+                  <option value="CSAYE">CSAYE - Cs. Salud y Educación</option>
                 </select>
               </div>
+              <div v-if="form.tipo === 'Laboratorios'" class="col-span-1"></div>
               <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1">Capacidad <span class="text-red-500">*</span></label>
-                <input v-model="form.capacidad" type="number" min="1" class="form-input text-sm" placeholder="Ej: 30">
+                <input v-model="form.capacidad" type="number" min="1" class="form-input text-sm w-full" placeholder="Ej: 30">
               </div>
               <div>
-                <label class="block text-xs font-bold text-slate-500 mb-1">Horario Disponible <span class="text-red-500">*</span></label>
-                <div class="flex gap-2">
-                  <select v-model="form.horario" class="form-input text-sm flex-1">
-                    <option value="" disabled>Selecciona un horario</option>
-                    <option v-for="h in availableHorarios" :key="h" :value="h">{{ h }}</option>
-                    <option value="personalizado">📝 Horario personalizado</option>
-                  </select>
-                  <input v-if="form.horario === 'personalizado'" v-model="horarioPersonalizado" 
-                    type="text" 
-                    placeholder="Ej: 09:30 - 11:30"
-                    class="form-input text-sm w-40"
-                    @blur="aplicarHorarioPersonalizado">
-                </div>
-                <p v-if="form.horario === 'personalizado'" class="text-xs text-slate-500 mt-1">
-                  Formato: HH:MM - HH:MM (ej: 09:30 - 11:30)
-                </p>
+                <label class="block text-xs font-bold text-slate-500 mb-1">Horario <span class="text-red-500">*</span></label>
+                <select v-model="form.horario" class="form-input text-sm w-full">
+                  <option value="" disabled>Selecciona</option>
+                  <option v-for="h in availableHorarios" :key="h" :value="h">{{ h }}</option>
+                  <option value="personalizado">📝 Personalizado</option>
+                </select>
               </div>
             </div>
+
+            <!-- Horario personalizado (si aplica) -->
+            <div v-if="form.horario === 'personalizado'">
+              <label class="block text-xs font-bold text-slate-500 mb-1">Horario Personalizado (HH:MM - HH:MM)</label>
+              <input v-model="horarioPersonalizado" type="text" placeholder="Ej: 09:30 - 11:30" class="form-input text-sm w-full" @blur="aplicarHorarioPersonalizado">
+            </div>
+
+            <!-- Ubicación (ancho completo) -->
             <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Ubicación <span class="text-red-500">*</span></label>
-              <input v-model="form.ubicacion" type="text" class="form-input text-sm" placeholder="Ej: Bloque B, Segundo Piso" maxlength="200">
+              <input v-model="form.ubicacion" type="text" class="form-input text-sm w-full" placeholder="Ej: Bloque B, Segundo Piso" maxlength="200">
             </div>
+
+            <!-- Descripción (ancho completo) -->
             <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Descripción</label>
-              <textarea v-model="form.descripcion" class="form-input text-sm" rows="2" placeholder="Descripción breve del espacio..."></textarea>
+              <textarea v-model="form.descripcion" class="form-input text-sm w-full" rows="2" placeholder="Descripción breve del espacio..."></textarea>
             </div>
+
+            <!-- Imagen -->
             <div>
               <label class="block text-xs font-bold text-slate-500 mb-1">Imagen del Espacio</label>
-
-              <!-- Zona de carga -->
-              <div
-                class="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition hover:border-[#003087] hover:bg-blue-50/30"
+              <div class="border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition hover:border-[#003087] hover:bg-blue-50/30"
                 :class="form.imagen ? 'border-emerald-300 bg-emerald-50/20' : 'border-slate-200'"
                 @click="$refs.inputImagen.click()"
                 @dragover.prevent
-                @drop.prevent="onDropImagen"
-              >
-                <!-- Previsualización -->
-                <div v-if="form.imagen" class="relative">
-                  <img :src="form.imagen" :alt="form.nombre" class="w-full h-40 object-cover rounded-lg mx-auto">
-                  <button type="button" @click.stop="quitarImagen"
-                    class="absolute top-2 right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition shadow">
-                    ✕
-                  </button>
-                  <p class="text-xs text-emerald-600 font-semibold mt-2">✓ Imagen cargada</p>
+                @drop.prevent="onDropImagen">
+                <div v-if="form.imagen" class="relative inline-block">
+                  <img :src="form.imagen" :alt="form.nombre" class="h-20 object-cover rounded-lg">
+                  <button type="button" @click.stop="quitarImagen" class="absolute top-0 right-0 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600 transition shadow">✕</button>
                 </div>
-                <!-- Sin imagen -->
-                <div v-else class="py-4 space-y-2">
-                  <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto text-2xl">🖼️</div>
-                  <p class="text-sm font-semibold text-slate-600">Haz clic o arrastra una imagen aquí</p>
-                  <p class="text-xs text-slate-400">JPG, PNG o WEBP · Máx. 5 MB</p>
+                <div v-else class="py-2 space-y-1">
+                  <p class="text-xs font-semibold text-slate-600">📸 Haz clic o arrastra aquí</p>
+                  <p class="text-xs text-slate-400">JPG, PNG, WEBP · Máx. 5MB</p>
+                </div>
+              </div>
+              <input ref="inputImagen" type="file" accept="image/jpeg,image/jpg,image/png,image/webp" class="hidden" @change="onSeleccionarImagen">
+              <p v-if="subiendoImagen" class="text-xs text-[#003087] font-semibold mt-1">⏳ Subiendo...</p>
+              <p v-if="imagenError" class="text-xs text-red-500 font-semibold mt-1">{{ imagenError }}</p>
+            </div>
+
+            <!-- RESPONSABLES EN 2 COLUMNAS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+              <!-- Responsable Académico -->
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <span class="w-4 h-4 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs">🎓</span>
+                  Responsable Académico <span class="text-red-500">*</span>
+                </h4>
+                <div class="space-y-2">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-0.5">Nombre</label>
+                    <input v-model="form.responsable_academico.nombre" type="text" class="form-input text-sm w-full" placeholder="Dr. Juan Pérez" maxlength="100">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-0.5">Email</label>
+                    <input v-model="form.responsable_academico.email" type="email" class="form-input text-sm w-full" placeholder="juan@universidad.edu">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-0.5">Teléfono</label>
+                    <input v-model="form.responsable_academico.telefono" type="tel" class="form-input text-sm w-full" placeholder="+56 9 1234 5678">
+                  </div>
                 </div>
               </div>
 
-              <!-- Input oculto -->
-              <input
-                ref="inputImagen"
-                type="file"
-                accept="image/jpeg,image/jpg,image/png,image/webp"
-                class="hidden"
-                @change="onSeleccionarImagen"
-              >
-
-              <!-- Estado subida -->
-              <p v-if="subiendoImagen" class="text-xs text-[#003087] font-semibold mt-2 flex items-center gap-1.5">
-                <span class="w-3 h-3 border-2 border-[#003087] border-t-transparent rounded-full animate-spin"></span>
-                Subiendo imagen...
-              </p>
-              <p v-if="imagenError" class="text-xs text-red-500 font-semibold mt-1.5">{{ imagenError }}</p>
+              <!-- Responsable Administrativo -->
+              <div>
+                <h4 class="text-xs font-bold text-slate-900 mb-3 flex items-center gap-2">
+                  <span class="w-4 h-4 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs">📋</span>
+                  Responsable Administrativo <span class="text-red-500">*</span>
+                </h4>
+                <div class="space-y-2">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-0.5">Nombre</label>
+                    <input v-model="form.responsable_administrativo.nombre" type="text" class="form-input text-sm w-full" placeholder="Sra. María García" maxlength="100">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-0.5">Email</label>
+                    <input v-model="form.responsable_administrativo.email" type="email" class="form-input text-sm w-full" placeholder="maria@universidad.edu">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-0.5">Teléfono</label>
+                    <input v-model="form.responsable_administrativo.telefono" type="tel" class="form-input text-sm w-full" placeholder="+56 9 1234 5678">
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -624,7 +653,12 @@ import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Tras
 import { authState } from '../router';
 import AdminReservasPanel from '../components/AdminReservasPanel.vue';
 
-const FORM_VACIO = { nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '', carrera: '' };
+const FORM_VACIO = { 
+  nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '', facultad: '',
+  info_uso: 'Docencia e Investigación',
+  responsable_academico: { nombre: '', email: '', telefono: '' },
+  responsable_administrativo: { nombre: '', email: '', telefono: '' }
+};
 
 export default {
   name: 'AdminDashboardView',
@@ -740,17 +774,34 @@ export default {
       this.espacioEditandoId = esp.id;
       this.imagenError = false;
       this.subiendoImagen = false;
-      // Parse carrera from ubicacion if it's a lab
-      const carreraMatch = esp.tipo === 'Laboratorios'
-        ? (esp.ubicacion || '').match(/^(CIYA|CAREN|CAYE|CSAYE)\s*[—–-]/i)
-        : null;
-      const carrera = carreraMatch ? carreraMatch[1].toUpperCase() : '';
+      
+      // Detectar facultad del espacio si es laboratorio
+      let facultad = '';
+      if (esp.tipo === 'Laboratorios') {
+        const match = (esp.ubicacion || '').match(/^(CIYA|CAREN|CAYE|CSAYE)\s*[—–-]/i);
+        if (match) {
+          facultad = match[1].toUpperCase();
+        }
+      }
+      
       this.form = {
         nombre: esp.nombre, tipo: esp.tipo, capacidad: esp.capacidad,
         ubicacion: esp.ubicacion, descripcion: esp.descripcion || '',
         imagen: esp.imagen || '', horario: esp.horario || '',
-        carrera
+        facultad: facultad,
+        info_uso: esp.info_uso || 'Docencia e Investigación',
+        responsable_academico: {
+          nombre: esp.responsable_academico_nombre || '',
+          email: esp.responsable_academico_email || '',
+          telefono: esp.responsable_academico_telefono || ''
+        },
+        responsable_administrativo: {
+          nombre: esp.responsable_administrativo_nombre || '',
+          email: esp.responsable_administrativo_email || '',
+          telefono: esp.responsable_administrativo_telefono || ''
+        }
       };
+      
       // Si el horario no está en la lista predefinida, es personalizado
       this.horarioPersonalizado = '';
       if (esp.horario && !this.availableHorarios.includes(esp.horario)) {
@@ -819,19 +870,33 @@ export default {
     async guardarEspacio() {
       this.guardando = true; this.formError = '';
       try {
-        // Validar carrera obligatoria para laboratorios
-        if (this.form.tipo === 'Laboratorios' && !this.form.carrera) {
-          this.formError = 'Debes seleccionar una carrera para los laboratorios.';
+        // Validar facultad obligatoria para laboratorios
+        if (this.form.tipo === 'Laboratorios' && !this.form.facultad) {
+          this.formError = 'Debes seleccionar una facultad para los laboratorios.';
           this.guardando = false;
           return;
         }
-        // Construir payload — embed carrera en ubicacion si es laboratorio
-        const payload = { ...this.form };
-        if (payload.tipo === 'Laboratorios' && payload.carrera) {
-          const sinCarrera = payload.ubicacion.replace(/^(CIYA|CAREN|CAYE|CSAYE)\s*[—–-]\s*/i, '').trim();
-          payload.ubicacion = `${payload.carrera} — ${sinCarrera}`;
+
+        // Validar responsables
+        if (!this.form.responsable_academico.nombre || !this.form.responsable_academico.email || !this.form.responsable_academico.telefono) {
+          this.formError = 'El responsable académico debe tener nombre, email y teléfono.';
+          this.guardando = false;
+          return;
         }
-        delete payload.carrera;
+
+        if (!this.form.responsable_administrativo.nombre || !this.form.responsable_administrativo.email || !this.form.responsable_administrativo.telefono) {
+          this.formError = 'El responsable administrativo debe tener nombre, email y teléfono.';
+          this.guardando = false;
+          return;
+        }
+
+        // Construir payload — embed facultad en ubicacion si es laboratorio
+        const payload = { ...this.form };
+        if (payload.tipo === 'Laboratorios' && payload.facultad) {
+          const sinFacultad = payload.ubicacion.replace(/^(CIYA|CAREN|CAYE|CSAYE)\s*[—–-]\s*/i, '').trim();
+          payload.ubicacion = `${payload.facultad} — ${sinFacultad}`;
+        }
+        delete payload.facultad;
         const url = this.editando ? `/api/espacios/${this.espacioEditandoId}` : '/api/espacios';
         const method = this.editando ? 'PUT' : 'POST';
         const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });

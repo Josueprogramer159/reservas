@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "init-db": "node src/db/init-db.js"
+    "init-db": "node src/db/init-db.js",
+    "migrate:002": "node src/db/apply-migration-002.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

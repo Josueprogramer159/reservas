@@ -289,6 +289,9 @@
                 </div>
                 <div class="flex gap-3">
                   <span class="px-3 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-700">{{ res.estado }}</span>
+                  <button @click="verDetalleReserva(res)" class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg">
+                    Ver Detalle
+                  </button>
                   <button @click="descargarCalendario(res)" class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg">
                     <CalendarPlus class="w-4 h-4" />
                     Calendario
@@ -355,7 +358,7 @@
         <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div v-for="space in favoritos" :key="space.id" class="card-premium overflow-hidden flex flex-col">
             <div class="relative overflow-hidden h-40 bg-slate-100">
-              <img :src="space.imagen_url" :alt="space.nombre" class="w-full h-full object-cover" />
+              <img :src="space.imagen" :alt="space.nombre" class="w-full h-full object-cover" />
               <span class="absolute top-3 left-3 bg-[#003087] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">{{ space.tipo }}</span>
               <span class="absolute top-3 right-12 text-[10px] font-extrabold px-2.5 py-1 rounded-full" :class="space.activo ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'">{{ space.activo ? 'Disponible' : 'No disponible' }}</span>
               <div class="absolute top-3 right-3">
@@ -418,18 +421,17 @@
           </div>
 
           <div class="grid grid-cols-7 gap-1 mb-2">
-            <div v-for="dia in ['L', 'M', 'X', 'J', 'V', 'S', 'D']" :key="dia" class="h-10 flex items-center justify-center font-bold text-xs text-slate-500">{{ dia }}</div>
+            <div v-for="dia in ['L', 'M', 'X', 'J', 'V', 'S', 'D']" :key="dia" class="h-6 flex items-center justify-center font-bold text-[10px] text-slate-500">{{ dia }}</div>
           </div>
 
           <div class="grid grid-cols-7 gap-1">
-            <div v-for="(celda, idx) in celdasCalendario" :key="idx" class="aspect-square rounded-lg p-2 cursor-pointer transition-all" :class="[celda.mesActual ? (celda.esHoy ? 'bg-[#003087] text-white font-bold' : 'bg-slate-50 hover:bg-slate-100') : 'bg-slate-100 text-slate-400', celda.eventos.length > 0 ? 'ring-2 ring-emerald-400' : '']" @click="celda.eventos.length > 0 && seleccionarEvento(celda.eventos[0])">
-              <div class="text-sm font-semibold">{{ celda.dia }}</div>
-              <div v-if="celda.eventos.length > 0" class="flex gap-0.5 flex-wrap mt-1">
-                <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id" class="w-1.5 h-1.5 rounded-full" :class="{
-                  'bg-blue-500': evt.espacio_tipo === 'Laboratorios',
-                  'bg-emerald-500': evt.espacio_tipo === 'Canchas',
-                  'bg-purple-500': evt.espacio_tipo === 'Salas'
-                }"></div>
+            <div v-for="(celda, idx) in celdasCalendario" :key="idx" class="aspect-square rounded-lg p-1 cursor-pointer transition-all" :class="[celda.mesActual ? (celda.esHoy ? 'bg-[#003087] text-white font-bold' : 'bg-slate-50 hover:bg-slate-100') : 'bg-slate-100 text-slate-400', celda.eventos.length > 0 ? 'ring-2 ring-emerald-400' : '']" @click="celda.eventos.length > 0 && seleccionarEvento(celda.eventos[0])">
+              <div class="text-xs font-semibold">{{ celda.dia }}</div>
+              <div v-if="celda.eventos.length > 0" class="flex flex-col gap-0.5 mt-0.5 text-[9px]">
+                <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id" class="bg-emerald-100 text-emerald-700 px-0.5 py-0 rounded truncate font-semibold line-clamp-1">
+                  {{ evt.nombre_espacio }}
+                </div>
+                <div v-if="celda.eventos.length > 2" class="text-slate-500 text-[8px]">+{{ celda.eventos.length - 2 }}</div>
               </div>
             </div>
           </div>
@@ -578,28 +580,100 @@
         </div>
       </div>
     </main>
-    <!-- MODAL: RESERVE CONFIRMATION -->
-    <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-md w-full">
-        <div class="h-1.5 bg-[#003087]"></div>
-        <div class="p-6">
-          <h3 class="text-lg font-bold text-slate-900 mb-2">Completar Reserva</h3>
-          <p class="text-xs text-slate-500 mb-6">Estás reservando: <span class="font-semibold text-[#003087]">{{ selectedSpace?.nombre }}</span></p>
-          <div v-if="modalError" class="mb-4 p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs font-medium">{{ modalError }}</div>
-          <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4 mb-6">
-            <p class="text-sm text-slate-700">¿Estás seguro?</p>
+    <!-- MODAL: RESERVATION DETAIL -->
+    <div v-if="showDetalleReserva" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between">
+          <h2 class="text-xl font-bold text-slate-900">Detalle de Reserva</h2>
+          <button @click="showDetalleReserva = false" class="p-2 hover:bg-slate-100 rounded-lg">✕</button>
+        </div>
+
+        <div v-if="detalleReserva" class="p-6 space-y-6">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Espacio</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.nombre_espacio }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Fecha</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.fecha }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Hora Inicio</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.hora_inicio }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Hora Fin</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.hora_finalizacion }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Email Solicitante</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.email_solicitante }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Nombre Solicitante</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.nombre_solicitante }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Carrera</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.carrera }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Ciclo</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.ciclo }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Paralelo</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.paralelo }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Tipo/Motivo</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.tipo }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Tema</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.tema }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Responsable Académico</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.responsable_academico }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Responsable Administrativo</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.responsable_administrativo }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Total Asistentes</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.total_asistentes }}</p>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Software</p>
+              <p class="text-sm font-bold text-slate-900">{{ detalleReserva.software }}</p>
+            </div>
           </div>
-          <div class="flex space-x-3">
-            <button @click="showModal = false" class="w-1/2 border border-slate-200 text-slate-700 font-semibold py-2.5 rounded-xl text-xs hover:bg-slate-50">Cancelar</button>
-            <button @click="confirmReservation" :disabled="submitting" class="w-1/2 bg-[#003087] text-white font-bold py-2.5 rounded-xl text-xs hover:bg-blue-800 disabled:opacity-50">
-              {{ submitting ? 'Procesando...' : 'Confirmar' }}
+
+          <div class="border-t pt-4">
+            <p class="text-xs font-semibold text-slate-500 uppercase mb-2">Descripción</p>
+            <p class="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg">{{ detalleReserva.descripcion }}</p>
+          </div>
+
+          <div class="flex gap-3 pt-4 border-t">
+            <button @click="showDetalleReserva = false" class="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-lg text-sm hover:bg-slate-50">
+              Cerrar
             </button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- QR SCANNER MODAL -->
+    <!-- MODAL: RESERVE WITH CALENDAR -->
+    <ReservaModal
+      :is-open="showModal"
+      :espacio="selectedSpace"
+      @close="showModal = false"
+      @reserva-completada="handleReservaCompletada"
+      @error="handleReservaError"
+    />
     <QRScannerModal :mostrar="mostrarScannerQR" @cerrar="mostrarScannerQR = false" @asistencia-registrada="onAsistenciaRegistrada" />
   </div>
 </template>
@@ -608,10 +682,11 @@ import { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monito
 import { authState } from '../router';
 import QRScannerModal from '../components/QRScannerModal.vue';
 import FavoritoButton from '../components/FavoritoButton.vue';
+import ReservaModal from '../components/ReservaModal.vue';
 
 export default {
   name: 'DashboardView',
-  components: { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, QRScannerModal, Pencil, Heart, FavoritoButton },
+  components: { CalendarRange, BookmarkCheck, UserCheck, LogOut, MapPin, Trash2, Monitor, Trophy, Video, Users, Loader2, CalendarPlus, CalendarDays, ChevronLeft, ChevronRight, QrCode, QRScannerModal, Pencil, Heart, FavoritoButton, ReservaModal },
   data() {
     return {
       state: authState,
@@ -657,7 +732,10 @@ export default {
       // Category panel state
       activeCategory: null,
       _savedCategory: null,
-      activeSubCategory: null
+      activeSubCategory: null,
+      // Detail modal
+      showDetalleReserva: false,
+      detalleReserva: null
     };
   },
   computed: {
@@ -925,7 +1003,7 @@ export default {
         capacidad: space.capacidad,
         ubicacion: space.ubicacion,
         descripcion: space.descripcion,
-        imagen: space.imagen_url,
+        imagen: space.imagen,
         horario: space.horario,
         disponible: space.activo,
         es_favorito: true
@@ -968,6 +1046,21 @@ export default {
       } finally {
         this.submitting = false;
       }
+    },
+    handleReservaCompletada(mensaje) {
+      this.toastMessage = mensaje || 'Reserva confirmada exitosamente';
+      setTimeout(() => { this.toastMessage = ''; }, 6000);
+      setTimeout(() => {
+        Promise.all([this.fetchSpaces(), this.fetchMyReservations()]);
+        this.activeTab = 'mis-espacios';
+      }, 1500);
+    },
+    handleReservaError(error) {
+      this.modalError = error;
+    },
+    verDetalleReserva(reserva) {
+      this.detalleReserva = reserva;
+      this.showDetalleReserva = true;
     },
     async cancelReservation(resId) {
       if (!confirm('¿Cancelar esta reserva?')) return;
@@ -1030,7 +1123,8 @@ export default {
       this.construirCalendario();
     },
     seleccionarEvento(evento) {
-      this.eventoSeleccionado = evento;
+      // Navegar directamente al detalle del espacio sin preguntar
+      this.$router.push(`/espacios/${evento.espacio_id}`);
     },
     tipoColor(tipo) {
       if (tipo === 'Laboratorios') return 'bg-blue-100 text-blue-700';

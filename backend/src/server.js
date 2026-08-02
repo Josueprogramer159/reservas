@@ -20,14 +20,14 @@ import { getDbErrorMessage } from './utils/dbError.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-const port = process.env.PORT || 3002; // Port changed for notifications
+const port = process.env.PORT || 3002;
 
 const PgSession = pgSession(session);
 
 // Configurar CORS
-app.use(cors({ 
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000', 
-  credentials: true 
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  credentials: true
 }));
 
 // Middlewares para parsear cuerpo de peticiones
@@ -43,10 +43,10 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'supersecretkey_reserva_utc_2026',
   resave: false,
   saveUninitialized: false,
-  cookie: { 
-    secure: false, // false porque es desarrollo en localhost sin HTTPS
-    httpOnly: true, 
-    maxAge: 24 * 60 * 60 * 1000 // 24 horas
+  cookie: {
+    secure: false,
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
 
@@ -79,8 +79,8 @@ app.get('/api/health', async (req, res) => {
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
-  console.error('Error no controlado en el servidor:', err);
-  res.status(500).json({ success: false, message: 'Error interno del servidor' });
+  console.error('Error no controlado:', err);
+  res.status(500).json({ success: false, message: 'Error interno' });
 });
 
 app.listen(port, async () => {
@@ -89,9 +89,6 @@ app.listen(port, async () => {
     await pool.query('SELECT 1');
     console.log('Conexión a PostgreSQL verificada correctamente.');
   } catch (error) {
-    console.error('\n⚠ No se pudo conectar a PostgreSQL.');
-    console.error('  Inicia el servicio: Start-Service postgresql-x64-17');
-    console.error('  Luego ejecuta: npm run init-db\n');
-    console.error('  Detalle:', error.message || error.code);
+    console.error('Error de conexión:', error.message);
   }
 });
