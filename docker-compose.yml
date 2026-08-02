@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: reservas_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: reservas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - reservas_network
+
+  backend:
+    build: ./backend
+    container_name: reservas_backend
+    environment:
+      PORT: 3002
+      DB_USER: postgres
+      DB_PASSWORD: root
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: reservas
+      SESSION_SECRET: supersecretkey_reserva_utc_2026
+      CORS_ORIGIN: http://localhost:3000
+      NODE_ENV: production
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./backend/public/uploads:/app/public/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - reservas_network
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: reservas_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - reservas_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  reservas_network:
+    driver: bridge

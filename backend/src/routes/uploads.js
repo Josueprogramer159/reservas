@@ -20,11 +20,11 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  if (allowed.includes(file.mimetype)) {
+  // Permitir cualquier tipo de imagen
+  if (file.mimetype && file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('Solo se permiten imágenes JPG, PNG o WEBP'), false);
+    cb(new Error('Solo se permiten archivos de imagen'), false);
   }
 };
 

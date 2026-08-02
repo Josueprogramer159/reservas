@@ -12,23 +12,32 @@ const perfilController = {
         return res.status(401).json({ success: false, message: 'Debes iniciar sesión para ver tu perfil' });
       }
 
-      const result = await pool.query(
-        'SELECT id, nombre, email, fecha_registro AS created_at FROM usuarios WHERE id = $1',
+      const userResult = await pool.query(
+        'SELECT id, nombre, email, telefono, fecha_registro AS created_at FROM usuarios WHERE id = $1',
         [usuarioId]
       );
 
-      if (result.rows.length === 0) {
+      if (userResult.rows.length === 0) {
         return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       }
 
+      // Contar reservas confirmadas del usuario
+      const statsResult = await pool.query(
+        'SELECT COUNT(*) as total_reservas FROM reservas WHERE usuario_id = $1 AND estado = $2',
+        [usuarioId, 'confirmado']
+      );
+
       const usuario = {
-        ...result.rows[0],
+        ...userResult.rows[0],
         apellido: null,
-        telefono: null,
         rol: 'user'
       };
 
-      res.json({ success: true, usuario });
+      const estadisticas = {
+        total_reservas: parseInt(statsResult.rows[0].total_reservas) || 0
+      };
+
+      res.json({ success: true, usuario, estadisticas });
     } catch (error) {
       console.error('Error al obtener perfil:', error);
       res.status(500).json({ success: false, message: 'Error al obtener perfil' });

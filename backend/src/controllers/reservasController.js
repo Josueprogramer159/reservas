@@ -1,4 +1,5 @@
 import pool from '../db/database.js';
+import { generarCodigoQR } from './asistenciaController.js';
 
 export const crearReserva = async (req, res) => {
   try {
@@ -84,6 +85,14 @@ export const crearReserva = async (req, res) => {
         paralelo, software, descripcion
       ]
     );
+
+    // Generar QR automáticamente después de crear la reserva
+    try {
+      await generarCodigoQR(result.rows[0].id, usuarioId, espacio_id, fecha);
+    } catch (qrError) {
+      console.warn('Error al generar QR:', qrError);
+      // No fallar la reserva si el QR falla
+    }
 
     res.status(201).json({
       success: true,

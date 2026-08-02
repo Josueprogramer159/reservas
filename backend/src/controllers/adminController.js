@@ -126,7 +126,7 @@ export const getDashboardData = async (req, res) => {
 
   try {
     const usuariosRes = await pool.query('SELECT id, nombre, email, fecha_registro FROM usuarios ORDER BY id DESC');
-    const adminsRes = await pool.query('SELECT id, nombre, email, rol, activo, fecha_creacion FROM administradores ORDER BY id DESC');
+    const adminsRes = await pool.query('SELECT id, nombre, email, rol, activo, created_at FROM administradores ORDER BY id DESC');
     const reservasRes = await pool.query(`SELECT COUNT(*) FROM reservas WHERE estado = 'confirmado'`);
     const configuracionReserva = await getReservationConfig();
 

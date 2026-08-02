@@ -738,7 +738,9 @@ export default {
   methods: {
     async fetchDashboardData() {
       try {
-        const res = await fetch('/api/admin/dashboard-data');
+        const res = await fetch('/api/admin/dashboard-data', {
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) {
           this.users = data.usuarios || [];
@@ -753,7 +755,9 @@ export default {
       this.loadingEspacios = true;
       try {
         // Usa el endpoint público que incluye disponible, horarios_ocupados, etc.
-        const res = await fetch('/api/espacios/admin/todos');
+        const res = await fetch('/api/espacios/admin/todos', {
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) this.espacios = data.espacios || [];
       } catch (e) { console.error(e); }
@@ -841,7 +845,11 @@ export default {
       try {
         const fd = new FormData();
         fd.append('imagen', file);
-        const res = await fetch('/api/upload/imagen', { method: 'POST', body: fd });
+        const res = await fetch('/api/upload/imagen', { 
+          method: 'POST', 
+          body: fd,
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) {
           this.form.imagen = data.url;
@@ -899,7 +907,12 @@ export default {
         delete payload.facultad;
         const url = this.editando ? `/api/espacios/${this.espacioEditandoId}` : '/api/espacios';
         const method = this.editando ? 'PUT' : 'POST';
-        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const res = await fetch(url, { 
+          method, 
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload) 
+        });
         const data = await res.json();
         if (data.success) {
           this.showEspacioModal = false;
@@ -919,7 +932,10 @@ export default {
     async eliminarEspacio() {
       this.eliminando = true; this.deleteError = '';
       try {
-        const res = await fetch(`/api/espacios/${this.espacioAEliminar.id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/espacios/${this.espacioAEliminar.id}`, { 
+          method: 'DELETE',
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) {
           this.showDeleteModal = false;
@@ -933,7 +949,10 @@ export default {
     },
     async toggleActivo(esp) {
       try {
-        const res = await fetch(`/api/espacios/${esp.id}/toggle-activo`, { method: 'PATCH' });
+        const res = await fetch(`/api/espacios/${esp.id}/toggle-activo`, { 
+          method: 'PATCH',
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) {
           esp.activo = data.espacio.activo;
@@ -952,6 +971,7 @@ export default {
       try {
         const res = await fetch('/api/admin/reservation-settings', {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify(this.reservationSettingsForm)
         });
         const data = await res.json();
@@ -980,7 +1000,9 @@ export default {
         const params = new URLSearchParams();
         if (this.busquedaReservas.trim()) params.append('busqueda', this.busquedaReservas.trim());
         if (this.filtroFechaReservas) params.append('fecha', this.filtroFechaReservas);
-        const res = await fetch(`/api/admin/reservas?${params}`);
+        const res = await fetch(`/api/admin/reservas?${params}`, {
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) this.reservas = data.reservas || [];
       } catch (e) { console.error(e); }
@@ -994,7 +1016,10 @@ export default {
     async confirmarCancelacion() {
       this.cancelando = true; this.cancelError = '';
       try {
-        const res = await fetch(`/api/admin/reservas/${this.reservaACancelar.id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/admin/reservas/${this.reservaACancelar.id}`, { 
+          method: 'DELETE',
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) {
           this.showCancelModal = false;
@@ -1036,6 +1061,7 @@ export default {
       try {
         const res = await fetch(`/api/admin/usuarios/${this.usuarioEditandoRol.id}/rol`, {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
           body: JSON.stringify({ rol: this.nuevoRol })
         });
         const data = await res.json();
@@ -1078,7 +1104,11 @@ export default {
     },
     async handleLogout() {
       try {
-        const res = await fetch('/api/admin/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const res = await fetch('/api/admin/logout', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
         const data = await res.json();
         if (data.success) { this.state.logoutAdmin(); this.$router.push('/'); }
       } catch (e) { console.error(e); }
