@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import pool from '../db/database.js';
 import { getDbErrorMessage } from '../utils/dbError.js';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 export const registro = async (req, res) => {
   try {
@@ -20,8 +20,23 @@ export const registro = async (req, res) => {
       });
     }
 
+    // Validar longitud del nombre
+    if (nombre.trim().length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre completo debe tener al menos 2 caracteres'
+      });
+    }
+
+    if (nombre.trim().length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'El nombre completo no puede superar los 100 caracteres'
+      });
+    }
+
     if (!EMAIL_REGEX.test(email)) {
-      return res.status(400).json({ success: false, message: 'El correo electrónico no es válido' });
+      return res.status(400).json({ success: false, message: 'El correo electrónico no es válido. Formato esperado: usuario@dominio.com' });
     }
 
     if (password.length < 8) {
@@ -31,11 +46,19 @@ export const registro = async (req, res) => {
       });
     }
 
-    const emailCheck = await pool.query('SELECT email FROM usuarios WHERE email = $1', [email]);
+    // Validar que la contraseña tenga mayúscula, minúscula y número
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      return res.status(400).json({
+        success: false,
+        message: 'La contraseña debe contener mayúsculas, minúsculas y números'
+      });
+    }
+
+    const emailCheck = await pool.query('SELECT email FROM usuarios WHERE email = $1', [email.toLowerCase()]);
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({
         success: false,
-        message: 'El correo ya se encuentra registrado'
+        message: 'El correo ya se encuentra registrado en el sistema'
       });
     }
 
@@ -43,17 +66,17 @@ export const registro = async (req, res) => {
 
     const result = await pool.query(
       'INSERT INTO usuarios (nombre, email, password) VALUES ($1, $2, $3) RETURNING id, nombre, email',
-      [nombre.trim(), email.trim(), hashedPassword]
+      [nombre.trim(), email.trim().toLowerCase(), hashedPassword]
     );
 
     req.session.userId = result.rows[0].id;
-    req.session.userEmail = email.trim();
+    req.session.userEmail = email.trim().toLowerCase();
     req.session.userName = result.rows[0].nombre;
     req.session.role = 'user';
 
     res.json({
       success: true,
-      message: 'Registro exitoso. Tu cuenta ha sido creada correctamente.',
+      message: 'Registro exitoso. Tu cuenta ha sido creada correctamente. Serás redirigido al inicio de sesión en unos segundos.',
       user: result.rows[0]
     });
   } catch (error) {
@@ -70,8 +93,15 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Todos los campos son obligatorios' });
     }
 
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'El correo electrónico no es válido. Formato esperado: usuario@dominio.com' 
+      });
+    }
+
     const result = await pool.query(
-      'SELECT id, nombre, email, password, activo FROM usuarios WHERE email = $1',
+      'SELECT id, nombre, email, password, activo FROM usuarios WHERE LOWER(email) = LOWER($1)',
       [email.trim()]
     );
 

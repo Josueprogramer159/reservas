@@ -77,9 +77,29 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+app.get('/api/debug/session', (req, res) => {
+  console.log('🔍 DEBUG SESSION');
+  console.log('   Cookies recibidas:', req.headers.cookie);
+  console.log('   Session ID:', req.session?.id);
+  console.log('   Session userId:', req.session?.userId);
+  console.log('   Session role:', req.session?.role);
+  
+  res.json({ 
+    success: true, 
+    session: {
+      id: req.session?.id,
+      userId: req.session?.userId,
+      role: req.session?.role,
+      userEmail: req.session?.userEmail,
+      userName: req.session?.userName
+    },
+    cookies: req.headers.cookie ? 'Presente' : 'Ausente'
+  });
+});
+
 // Manejo de errores global
 app.use((err, req, res, next) => {
-  console.error('Error no controlado:', err);
+  console.error('❌ Error no controlado:', err);
   res.status(500).json({ success: false, message: 'Error interno' });
 });
 

@@ -450,6 +450,11 @@
       </div>
     </div>
 
+    <!-- TAB: BACKUPS Y EXPORTACIÓN -->
+    <div v-if="activeTab === 'backups'" class="space-y-6">
+      <BackupPanel />
+    </div>
+
     <!-- TAB: ADMINISTRADORES -->
     <div v-if="activeTab === 'admins'" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
       <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center space-x-2"><ShieldCheck class="w-5 h-5 text-[#FFB800]" /><span>Administradores del Sistema</span></h3>
@@ -652,6 +657,7 @@
 import { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck as UserCheckIcon, ClipboardList } from 'lucide-vue-next';
 import { authState } from '../router';
 import AdminReservasPanel from '../components/AdminReservasPanel.vue';
+import BackupPanel from '../components/BackupPanel.vue';
 
 const FORM_VACIO = { 
   nombre: '', tipo: '', capacidad: '', ubicacion: '', descripcion: '', imagen: '', horario: '', facultad: '',
@@ -662,7 +668,7 @@ const FORM_VACIO = {
 
 export default {
   name: 'AdminDashboardView',
-  components: { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck: UserCheckIcon, ClipboardList, AdminReservasPanel },
+  components: { Users, ShieldCheck, CalendarCheck, LogOut, Building, Plus, Pencil, Trash2, UserX, UserCheck: UserCheckIcon, ClipboardList, AdminReservasPanel, BackupPanel },
   data() {
     return {
       state: authState,
@@ -673,6 +679,7 @@ export default {
         { key: 'reservas',       label: '📊 Visualización de Reservas' },
         { key: 'usuarios',       label: '👤 Gestión de Usuarios' },
         { key: 'configuracion',  label: '⚙️ Configuración de Reservas' },
+        { key: 'backups',        label: '💾 Backups y Exportación' },
         { key: 'admins',         label: '🛡️ Administradores' }
       ],
       users: [], admins: [], reservasActivas: 0,

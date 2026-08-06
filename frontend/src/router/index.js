@@ -23,7 +23,9 @@ export const authState = reactive({
   async checkAuth() {
     try {
       // 1. Probar si hay sesión de usuario activa
-      const userRes = await fetch('/api/auth/profile');
+      const userRes = await fetch('/api/auth/profile', {
+        credentials: 'include'  // ✅ Incluir cookies
+      });
       if (userRes.ok) {
         const data = await userRes.json();
         if (data.success) {
@@ -39,7 +41,9 @@ export const authState = reactive({
 
     try {
       // 2. Probar si hay sesión de administrador activa
-      const adminRes = await fetch('/api/admin/profile');
+      const adminRes = await fetch('/api/admin/profile', {
+        credentials: 'include'  // ✅ Incluir cookies
+      });
       if (adminRes.ok) {
         const data = await adminRes.json();
         if (data.success) {

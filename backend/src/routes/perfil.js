@@ -1,13 +1,9 @@
 import express from 'express';
-import requireAuth from '../middleware/requireAuth.js';
 import perfilController from '../controllers/perfilController.js';
 
 const router = express.Router();
 
-// Proteger todas las rutas
-router.use(requireAuth);
-
-// Rutas de perfil
+// Rutas de perfil (sin middleware, validación interna en el controlador)
 router.get('/', perfilController.getPerfil);
 router.put('/', perfilController.updatePerfil);
 

@@ -123,6 +123,7 @@ export default {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // ✅ Incluir cookies de sesión
           body: JSON.stringify({
             email: this.email,
             password: this.password

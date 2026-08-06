@@ -158,7 +158,9 @@ export default {
       this.loading = true; this.errorMessage = '';
       try {
         const res = await fetch('/api/admin/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // ✅ Incluir cookies de sesión
           body: JSON.stringify({ email: this.email, password: this.password })
         });
         const data = await res.json();
@@ -185,7 +187,9 @@ export default {
       this.regLoading = true;
       try {
         const res = await fetch('/api/admin/registro', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',  // ✅ Incluir cookies de sesión
           body: JSON.stringify(this.reg)
         });
         const data = await res.json();

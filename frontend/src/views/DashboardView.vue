@@ -425,37 +425,74 @@
           </div>
 
           <div class="grid grid-cols-7 gap-1">
-            <div v-for="(celda, idx) in celdasCalendario" :key="idx" class="aspect-square rounded-lg p-1 cursor-pointer transition-all" :class="[celda.mesActual ? (celda.esHoy ? 'bg-[#003087] text-white font-bold' : 'bg-slate-50 hover:bg-slate-100') : 'bg-slate-100 text-slate-400', celda.eventos.length > 0 ? 'ring-2 ring-emerald-400' : '']" @click="celda.eventos.length > 0 && seleccionarEvento(celda.eventos[0])">
-              <div class="text-xs font-semibold">{{ celda.dia }}</div>
-              <div v-if="celda.eventos.length > 0" class="flex flex-col gap-0.5 mt-0.5 text-[9px]">
-                <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id" class="bg-emerald-100 text-emerald-700 px-0.5 py-0 rounded truncate font-semibold line-clamp-1">
-                  {{ evt.nombre_espacio }}
+            <div v-for="(celda, idx) in celdasCalendario" :key="idx" class="min-h-24 rounded-lg p-2 cursor-pointer transition-all" :class="[celda.mesActual ? (celda.esHoy ? 'bg-[#003087] text-white font-bold' : 'bg-slate-50 hover:bg-slate-100') : 'bg-slate-100 text-slate-400', celda.eventos.length > 0 ? 'ring-2 ring-emerald-400' : '']" @click="celda.eventos.length > 0 && abrirModalEvento(celda.eventos[0])">
+              <div class="text-sm font-semibold mb-1">{{ celda.dia }}</div>
+              <div v-if="celda.eventos.length > 0" class="flex flex-col gap-1 mt-1 text-[10px]">
+                <div v-for="evt in celda.eventos.slice(0, 2)" :key="evt.id" class="bg-emerald-100 text-emerald-700 px-1 py-0.5 rounded font-semibold line-clamp-3">
+                  <div class="truncate font-bold text-[11px]">{{ evt.nombre_espacio }}</div>
+                  <div class="truncate text-[9px] opacity-80">{{ evt.horario }}</div>
                 </div>
-                <div v-if="celda.eventos.length > 2" class="text-slate-500 text-[8px]">+{{ celda.eventos.length - 2 }}</div>
+                <div v-if="celda.eventos.length > 2" class="text-slate-500 text-[9px]">+{{ celda.eventos.length - 2 }} más</div>
               </div>
             </div>
           </div>
-          <div v-if="eventoSeleccionado" class="mt-8 pt-6 border-t border-slate-200 space-y-4">
-            <h3 class="font-bold text-slate-900">Evento Seleccionado</h3>
-            <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+        </div>
+
+        <!-- MODAL FLOTANTE: Detalles del Evento -->
+        <div v-if="showModalEvento && eventoSeleccionado" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in">
+            <!-- Header del Modal -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+              <h3 class="text-lg font-bold text-slate-900">Detalles de la Reserva</h3>
+              <button @click="showModalEvento = false" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">
+                ✕
+              </button>
+            </div>
+
+            <!-- Contenido -->
+            <div class="space-y-4">
+              <!-- Espacio -->
               <div>
-                <p class="text-xs text-slate-500 font-semibold uppercase">Espacio</p>
-                <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.espacio_nombre }}</p>
+                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Espacio</p>
+                <p class="text-base font-bold text-slate-900">{{ eventoSeleccionado.espacio_nombre }}</p>
               </div>
+
+              <!-- Tipo de Espacio -->
+              <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Tipo</p>
+                <p class="text-sm text-slate-700">{{ eventoSeleccionado.espacio_tipo }}</p>
+              </div>
+
+              <!-- Fecha -->
               <div class="grid grid-cols-2 gap-4">
                 <div>
-                  <p class="text-xs text-slate-500 font-semibold uppercase">Fecha</p>
-                  <p class="text-sm font-bold">{{ eventoSeleccionado.fecha }}</p>
+                  <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Fecha</p>
+                  <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.fecha }}</p>
                 </div>
                 <div>
-                  <p class="text-xs text-slate-500 font-semibold uppercase">Horario</p>
-                  <p class="text-sm font-bold">{{ eventoSeleccionado.horario }}</p>
+                  <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Horario</p>
+                  <p class="text-sm font-bold text-slate-900">{{ eventoSeleccionado.horario }}</p>
                 </div>
               </div>
-              <button @click="descargarCalendario(eventoSeleccionado)" class="w-full mt-4 flex items-center justify-center gap-2 bg-[#003087] text-white font-semibold py-2.5 rounded-lg hover:bg-blue-800 text-sm">
-                <CalendarPlus class="w-4 h-4" />
-                Agregar a calendario
-              </button>
+
+              <!-- Estado -->
+              <div>
+                <p class="text-xs font-semibold text-slate-500 uppercase mb-1">Estado</p>
+                <span class="inline-block px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">
+                  {{ eventoSeleccionado.estado }}
+                </span>
+              </div>
+
+              <!-- Botones -->
+              <div class="flex gap-3 pt-4 border-t border-slate-200">
+                <button @click="showModalEvento = false" class="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition text-sm">
+                  Cerrar
+                </button>
+                <button @click="descargarCalendario(eventoSeleccionado)" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#003087] text-white font-semibold rounded-lg hover:bg-blue-800 transition text-sm">
+                  <CalendarPlus class="w-4 h-4" />
+                  Agregar Calendario
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -690,7 +727,7 @@ export default {
   data() {
     return {
       state: authState,
-      activeTab: 'reservas',
+      activeTab: localStorage.getItem('dashboardActiveTab') || 'reservas',
       showModal: false,
       selectedSpace: null,
       spaces: [],
@@ -735,7 +772,10 @@ export default {
       activeSubCategory: null,
       // Detail modal
       showDetalleReserva: false,
-      detalleReserva: null
+      detalleReserva: null,
+      // Modal para evento del calendario
+      showModalEvento: false,
+      eventoSeleccionado: null
     };
   },
   computed: {
@@ -808,6 +848,9 @@ export default {
   watch: {
     myReservations() { this.construirCalendario(); },
     activeTab(newTab, oldTab) {
+      // ✅ Guardar pestaña activa en localStorage
+      localStorage.setItem('dashboardActiveTab', newTab);
+      
       if (oldTab === 'reservas') {
         this._savedCategory = this.activeCategory;
       }
@@ -1126,6 +1169,10 @@ export default {
       // Navegar directamente al detalle del espacio sin preguntar
       this.$router.push(`/espacios/${evento.espacio_id}`);
     },
+    abrirModalEvento(evento) {
+      this.eventoSeleccionado = evento;
+      this.showModalEvento = true;
+    },
     tipoColor(tipo) {
       if (tipo === 'Laboratorios') return 'bg-blue-100 text-blue-700';
       if (tipo === 'Canchas') return 'bg-emerald-100 text-emerald-700';
@@ -1178,19 +1225,23 @@ export default {
       this.loadingPerfil = true;
       this.perfilError = '';
       try {
-        const res = await fetch('/api/perfil', {
+        const res = await fetch('/api/auth/profile', {
           credentials: 'include' // Incluir cookies de sesión
         });
         const data = await res.json();
         if (data.success) {
-          this.perfilData = data.usuario || {};
-          this.estadisticas = data.estadisticas || { total_reservas: 0 };
+          this.perfilData = data.user || {};
+          // Calcular estadísticas manualmente si es necesario
+          if (!this.estadisticas) {
+            this.estadisticas = { total_reservas: 0 };
+          }
           this.perfilError = '';
         } else {
           this.perfilData = {};
           this.perfilError = data.message || 'No se pudo cargar el perfil';
         }
       } catch (e) {
+        console.error('Error al cargar perfil:', e);
         this.perfilData = {};
         this.perfilError = 'Error de conexión al cargar el perfil';
       } finally {

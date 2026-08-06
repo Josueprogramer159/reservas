@@ -108,6 +108,30 @@
                 :disabled="loading"
               >
               <p v-if="errors.password" class="text-red-500 text-xs mt-1.5 font-medium">{{ errors.password }}</p>
+              
+              <!-- Indicador de fortaleza -->
+              <div v-if="password.length > 0" class="mt-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div 
+                      class="h-full transition-all"
+                      :class="getPasswordStrengthColor"
+                      :style="{ width: getPasswordStrength + '%' }"
+                    ></div>
+                  </div>
+                  <span class="text-xs font-semibold" :class="getPasswordStrengthTextColor">
+                    {{ getPasswordStrengthText }}
+                  </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                  ✓ Mínimo 8 caracteres
+                  <span :class="password.length >= 8 ? 'text-emerald-600' : 'text-slate-400'">✓</span>
+                </p>
+                <p class="text-xs text-slate-500">
+                  ✓ Mayúscula, minúscula, número
+                  <span :class="/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password) ? 'text-emerald-600' : 'text-slate-400'">✓</span>
+                </p>
+              </div>
             </div>
 
             <!-- Confirmar Contraseña -->
@@ -203,6 +227,36 @@ export default {
       loading: false
     }
   },
+  computed: {
+    getPasswordStrength() {
+      let strength = 0;
+      if (this.password.length >= 8) strength += 25;
+      if (this.password.length >= 12) strength += 10;
+      if (/[a-z]/.test(this.password)) strength += 15;
+      if (/[A-Z]/.test(this.password)) strength += 15;
+      if (/\d/.test(this.password)) strength += 15;
+      if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(this.password)) strength += 20;
+      return Math.min(strength, 100);
+    },
+    getPasswordStrengthColor() {
+      const strength = this.getPasswordStrength;
+      if (strength < 40) return 'bg-red-500';
+      if (strength < 70) return 'bg-yellow-500';
+      return 'bg-emerald-500';
+    },
+    getPasswordStrengthText() {
+      const strength = this.getPasswordStrength;
+      if (strength < 40) return 'Débil';
+      if (strength < 70) return 'Media';
+      return 'Fuerte';
+    },
+    getPasswordStrengthTextColor() {
+      const strength = this.getPasswordStrength;
+      if (strength < 40) return 'text-red-600';
+      if (strength < 70) return 'text-yellow-600';
+      return 'text-emerald-600';
+    }
+  },
   methods: {
     // Validación para el paso 1 (email)
     validateEmailStep() {
@@ -213,9 +267,14 @@ export default {
         return false;
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const emailRegex = /^[a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
       if (!emailRegex.test(this.email.trim())) {
-        this.errors.email = 'Introduce un correo electrónico válido.';
+        this.errors.email = 'Introduce un correo electrónico válido (ej: usuario@dominio.com).';
+        return false;
+      }
+
+      if (this.email.trim().length > 255) {
+        this.errors.email = 'El correo electrónico no puede superar 255 caracteres.';
         return false;
       }
 
@@ -240,18 +299,38 @@ export default {
 
       this.errorMessage = '';
 
+      // Validación del código
       if (this.codigo.trim().length !== 6) {
         this.errors.codigo = 'El código debe tener 6 dígitos.';
       }
 
+      // Validación del nombre
       if (this.nombre.trim().length < 2) {
         this.errors.nombre = 'El nombre es muy corto (mínimo 2 caracteres).';
       }
 
+      if (this.nombre.trim().length > 100) {
+        this.errors.nombre = 'El nombre no puede superar 100 caracteres.';
+      }
+
+      // Validación de contraseña
       if (this.password.length < 8) {
         this.errors.password = 'La contraseña debe tener al menos 8 caracteres.';
       }
 
+      if (!/(?=.*[a-z])/.test(this.password)) {
+        this.errors.password = 'La contraseña debe contener al menos una letra minúscula.';
+      }
+
+      if (!/(?=.*[A-Z])/.test(this.password)) {
+        this.errors.password = 'La contraseña debe contener al menos una letra mayúscula.';
+      }
+
+      if (!/(?=.*\d)/.test(this.password)) {
+        this.errors.password = 'La contraseña debe contener al menos un número.';
+      }
+
+      // Validación de coincidencia de contraseñas
       if (this.password !== this.confirmPassword) {
         this.errors.confirmPassword = 'Las contraseñas no coinciden.';
       }
@@ -318,7 +397,7 @@ export default {
           authState.user = data.usuario;
           authState.admin = null;
           this.successMessage = data.message || 'Registro exitoso. Tu cuenta ha sido creada correctamente.';
-          setTimeout(() => this.$router.push('/dashboard'), 1500);
+          setTimeout(() => this.$router.push('/login'), 2000);
         } else {
           this.errorMessage = data.message || 'Error al registrar la cuenta.';
         }

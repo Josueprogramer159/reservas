@@ -1,19 +1,20 @@
 import pool from '../db/database.js';
 
-function getUsuarioId(req) {
-  return req.session?.userId || req.session?.usuario?.id || null;
-}
-
 const perfilController = {
   async getPerfil(req, res) {
     try {
-      const usuarioId = getUsuarioId(req);
+      const usuarioId = req.session?.userId;
+      
       if (!usuarioId) {
-        return res.status(401).json({ success: false, message: 'Debes iniciar sesión para ver tu perfil' });
+        console.log('❌ No hay userId en sesión. Session:', req.session);
+        return res.status(401).json({ success: false, message: 'No autenticado' });
       }
 
+      console.log('✅ userId encontrado:', usuarioId);
+
+      // Query simple para obtener usuario
       const userResult = await pool.query(
-        'SELECT id, nombre, email, telefono, fecha_registro AS created_at FROM usuarios WHERE id = $1',
+        'SELECT id, nombre, email FROM usuarios WHERE id = $1',
         [usuarioId]
       );
 
@@ -21,44 +22,32 @@ const perfilController = {
         return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       }
 
-      // Contar reservas confirmadas del usuario
-      const statsResult = await pool.query(
-        'SELECT COUNT(*) as total_reservas FROM reservas WHERE usuario_id = $1 AND estado = $2',
-        [usuarioId, 'confirmado']
-      );
+      const usuario = userResult.rows[0];
+      console.log('✅ Usuario obtenido:', usuario);
 
-      const usuario = {
-        ...userResult.rows[0],
-        apellido: null,
-        rol: 'user'
-      };
-
-      const estadisticas = {
-        total_reservas: parseInt(statsResult.rows[0].total_reservas) || 0
-      };
-
-      res.json({ success: true, usuario, estadisticas });
+      res.json({ success: true, usuario });
     } catch (error) {
-      console.error('Error al obtener perfil:', error);
+      console.error('❌ Error en getPerfil:', error.message);
       res.status(500).json({ success: false, message: 'Error al obtener perfil' });
     }
   },
 
   async updatePerfil(req, res) {
     try {
-      const usuarioId = getUsuarioId(req);
+      const usuarioId = req.session?.userId;
+      
       if (!usuarioId) {
-        return res.status(401).json({ success: false, message: 'Debes iniciar sesión para actualizar tu perfil' });
+        return res.status(401).json({ success: false, message: 'No autenticado' });
       }
 
-      const { nombre, apellido, telefono } = req.body;
+      const { nombre } = req.body;
 
       if (!nombre?.trim()) {
         return res.status(400).json({ success: false, message: 'El nombre es requerido' });
       }
 
       const result = await pool.query(
-        'UPDATE usuarios SET nombre = $1 WHERE id = $2 RETURNING id, nombre, email, fecha_registro AS created_at',
+        'UPDATE usuarios SET nombre = $1 WHERE id = $2 RETURNING id, nombre, email',
         [nombre.trim(), usuarioId]
       );
 
@@ -66,16 +55,9 @@ const perfilController = {
         return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
       }
 
-      const usuario = {
-        ...result.rows[0],
-        apellido: apellido || null,
-        telefono: telefono || null,
-        rol: 'user'
-      };
-
-      res.json({ success: true, usuario });
+      res.json({ success: true, usuario: result.rows[0] });
     } catch (error) {
-      console.error('Error al actualizar perfil:', error);
+      console.error('❌ Error en updatePerfil:', error.message);
       res.status(500).json({ success: false, message: 'Error al actualizar perfil' });
     }
   }

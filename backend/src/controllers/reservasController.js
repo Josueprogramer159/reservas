@@ -113,7 +113,12 @@ export const misReservas = async (req, res) => {
     const usuarioId = req.session.userId;
 
     const result = await pool.query(
-      `SELECT r.*, e.nombre as nombre_espacio, e.ubicacion
+      `SELECT r.*, 
+              e.nombre as espacio_nombre, 
+              e.tipo as espacio_tipo,
+              e.ubicacion,
+              CONCAT(r.hora_inicio, ' - ', r.hora_finalizacion) as horario,
+              TO_CHAR(r.fecha, 'YYYY-MM-DD') as fecha
        FROM reservas r
        JOIN espacios e ON r.espacio_id = e.id
        WHERE r.usuario_id = $1 AND r.estado = 'confirmado'
