@@ -126,7 +126,7 @@ export const getDashboardData = async (req, res) => {
 
   try {
     const usuariosRes = await pool.query('SELECT id, nombre, email, fecha_registro FROM usuarios ORDER BY id DESC');
-    const adminsRes = await pool.query('SELECT id, nombre, email, rol, activo, created_at FROM administradores ORDER BY id DESC');
+    const adminsRes = await pool.query('SELECT id, nombre, email, rol, activo, fecha_creacion FROM administradores ORDER BY id DESC');
     const reservasRes = await pool.query(`SELECT COUNT(*) FROM reservas WHERE estado = 'confirmado'`);
     const configuracionReserva = await getReservationConfig();
 
@@ -196,7 +196,7 @@ export const listarReservasAdmin = async (req, res) => {
     const offset = (pageNum - 1) * limit;
 
     let baseQuery = `
-      SELECT r.id, r.fecha, r.horario, r.estado, r.fecha_creacion,
+      SELECT r.id, r.fecha, CONCAT(TO_CHAR(r.hora_inicio, 'HH24:MI:SS'), ' - ', TO_CHAR(r.hora_finalizacion, 'HH24:MI:SS')) AS horario, r.estado, r.fecha_creacion,
              u.id AS usuario_id, u.nombre AS usuario_nombre, u.email AS usuario_email,
              e.id AS espacio_id, e.nombre AS espacio_nombre, e.tipo AS espacio_tipo, e.ubicacion AS espacio_ubicacion,
              e.capacidad
@@ -266,7 +266,7 @@ export const listarReservasAdmin = async (req, res) => {
     const total = parseInt(countResult.rows[0].total);
 
     // Ordenar y paginar
-    const query = baseQuery + ` ORDER BY r.fecha DESC, r.horario ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    const query = baseQuery + ` ORDER BY r.fecha DESC, r.hora_inicio ASC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
 
     const result = await pool.query(query, params);

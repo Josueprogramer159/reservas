@@ -293,8 +293,8 @@
                     Ver Detalle
                   </button>
                   <button @click="descargarCalendario(res)" class="flex items-center gap-1.5 text-xs font-semibold text-[#003087] hover:bg-blue-50 px-2.5 py-2 rounded-lg">
-                    <CalendarPlus class="w-4 h-4" />
-                    Calendario
+                    📅
+                    Google Calendar
                   </button>
                   <button @click="cancelReservation(res.id)" class="text-red-500 hover:bg-red-50 p-2 rounded-lg">
                     <Trash2 class="w-4 h-4" />
@@ -490,7 +490,7 @@
                 </button>
                 <button @click="descargarCalendario(eventoSeleccionado)" class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#003087] text-white font-semibold rounded-lg hover:bg-blue-800 transition text-sm">
                   <CalendarPlus class="w-4 h-4" />
-                  Agregar Calendario
+                  Google Calendar
                 </button>
               </div>
             </div>
@@ -586,30 +586,10 @@
               </div>
             </div>
 
-            <!-- Cambiar Contraseña -->
-            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
-              <h3 class="text-lg font-bold text-slate-900">Cambiar Contraseña</h3>
-              
-              <div v-if="contrasenaError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-sm font-medium">{{ contrasenaError }}</div>
-              <div v-if="contrasenaSuccess" class="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl text-sm font-medium">{{ contrasenaSuccess }}</div>
-
-              <div class="space-y-3">
-                <div>
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Contraseña Actual *</label>
-                  <input v-model="contrasenaForm.actual" type="password" class="form-input text-sm" placeholder="Tu contraseña actual">
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Nueva Contraseña *</label>
-                  <input v-model="contrasenaForm.nueva" type="password" class="form-input text-sm" placeholder="Mínimo 8 caracteres">
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-slate-500 mb-1">Confirmar Contraseña *</label>
-                  <input v-model="contrasenaForm.confirmar" type="password" class="form-input text-sm" placeholder="Confirma la nueva contraseña">
-                </div>
-              </div>
-
-              <button @click="cambiarContrasena" :disabled="cambiandoContrasena" class="w-full bg-red-600 text-white font-bold py-2.5 rounded-lg hover:bg-red-700 transition disabled:opacity-50 text-sm">
-                {{ cambiandoContrasena ? 'Cambiando...' : 'Cambiar Contraseña' }}
+            <!-- Cambiar Contraseña - Botón -->
+            <div class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+              <button @click="showModalCambiarContrasena = true" class="w-full px-6 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition active:scale-95 text-sm">
+                🔐 Cambiar Contraseña
               </button>
             </div>
 
@@ -617,6 +597,50 @@
         </div>
       </div>
     </main>
+
+    <!-- MODAL FLOTANTE: Cambiar Contraseña -->
+    <div v-if="showModalCambiarContrasena" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 animate-in">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+          <h3 class="text-lg font-bold text-slate-900">Cambiar Contraseña</h3>
+          <button @click="showModalCambiarContrasena = false" class="text-slate-400 hover:text-slate-600 text-2xl leading-none">
+            ✕
+          </button>
+        </div>
+
+        <!-- Mensajes -->
+        <div v-if="contrasenaError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-lg text-sm font-medium">{{ contrasenaError }}</div>
+        <div v-if="contrasenaSuccess" class="p-3 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-lg text-sm font-medium">{{ contrasenaSuccess }}</div>
+
+        <!-- Campos -->
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-2">Contraseña Actual *</label>
+            <input v-model="contrasenaForm.actual" type="password" class="form-input text-sm w-full" placeholder="Tu contraseña actual">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-2">Nueva Contraseña *</label>
+            <input v-model="contrasenaForm.nueva" type="password" class="form-input text-sm w-full" placeholder="Mínimo 8 caracteres">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-500 mb-2">Confirmar Contraseña *</label>
+            <input v-model="contrasenaForm.confirmar" type="password" class="form-input text-sm w-full" placeholder="Confirma la nueva contraseña">
+          </div>
+        </div>
+
+        <!-- Botones -->
+        <div class="flex gap-3 pt-4 border-t border-slate-200">
+          <button @click="showModalCambiarContrasena = false" class="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition text-sm">
+            Cancelar
+          </button>
+          <button @click="cambiarContrasena" :disabled="cambiandoContrasena" class="flex-1 px-4 py-2.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition disabled:opacity-50 text-sm">
+            {{ cambiandoContrasena ? 'Cambiando...' : 'Cambiar' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL: RESERVATION DETAIL -->
     <div v-if="showDetalleReserva" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
       <div class="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -775,7 +799,9 @@ export default {
       detalleReserva: null,
       // Modal para evento del calendario
       showModalEvento: false,
-      eventoSeleccionado: null
+      eventoSeleccionado: null,
+      // Modal para cambiar contraseña
+      showModalCambiarContrasena: false
     };
   },
   computed: {
@@ -1179,7 +1205,33 @@ export default {
       return 'bg-purple-100 text-purple-700';
     },
     async descargarCalendario(reserva) {
-      await this.descargarCalendarioById(reserva.id);
+      this.abrirEnGoogleCalendar(reserva);
+    },
+    abrirEnGoogleCalendar(reserva) {
+      // Extraer datos de la reserva
+      const titulo = reserva.nombre_espacio;
+      const descripcion = `Reserva de ${reserva.nombre_espacio}\nTipo: ${reserva.espacio_tipo}\nHorario: ${reserva.horario}`;
+      const fecha = reserva.fecha; // Formato: YYYY-MM-DD
+      const horario = reserva.horario; // Formato: HH:MM:SS - HH:MM:SS
+      
+      // Extraer hora de inicio y fin
+      const [horaInicio, horaFin] = horario.split(' - ');
+      
+      // Construir datetime para Google Calendar
+      // Google Calendar espera: YYYYMMDDTHHMMSS formato
+      const inicio = fecha.replace(/-/g, '') + 'T' + horaInicio.replace(/:/g, '');
+      const fin = fecha.replace(/-/g, '') + 'T' + horaFin.replace(/:/g, '');
+      
+      // Construir URL de Google Calendar
+      const googleCalendarUrl = new URL('https://calendar.google.com/calendar/render');
+      googleCalendarUrl.searchParams.set('action', 'TEMPLATE');
+      googleCalendarUrl.searchParams.set('text', titulo);
+      googleCalendarUrl.searchParams.set('dates', `${inicio}/${fin}`);
+      googleCalendarUrl.searchParams.set('details', descripcion);
+      googleCalendarUrl.searchParams.set('location', reserva.ubicacion || '');
+      
+      // Abrir en nueva ventana
+      window.open(googleCalendarUrl.toString(), '_blank');
     },
     async descargarCalendarioById(id) {
       try {

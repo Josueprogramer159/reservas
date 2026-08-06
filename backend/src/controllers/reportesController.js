@@ -59,11 +59,11 @@ export const getReporteUso = async (req, res) => {
 
     // 3. Horas pico (horario más reservado)
     const horasPico = await pool.query(`
-      SELECT r.horario, COUNT(r.id)::int AS total_reservas
+      SELECT CONCAT(TO_CHAR(r.hora_inicio, 'HH24:MI:SS'), ' - ', TO_CHAR(r.hora_finalizacion, 'HH24:MI:SS')) AS horario, COUNT(r.id)::int AS total_reservas
       FROM reservas r
       JOIN espacios e ON e.id = r.espacio_id
       WHERE ${WHERE}
-      GROUP BY r.horario
+      GROUP BY horario
       ORDER BY total_reservas DESC
     `, params);
 

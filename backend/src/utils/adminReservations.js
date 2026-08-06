@@ -43,14 +43,14 @@ export const buildAdminReservationsQuery = ({
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : 'WHERE 1=1';
 
   const baseQuery = `
-    SELECT r.id, r.fecha, r.horario, r.estado, r.fecha_creacion,
+    SELECT r.id, r.fecha, CONCAT(TO_CHAR(r.hora_inicio, 'HH24:MI:SS'), ' - ', TO_CHAR(r.hora_finalizacion, 'HH24:MI:SS')) AS horario, r.estado, r.fecha_creacion,
            u.id AS usuario_id, u.nombre AS usuario_nombre, u.email AS usuario_email,
            e.id AS espacio_id, e.nombre AS espacio_nombre, e.tipo AS espacio_tipo, e.ubicacion AS espacio_ubicacion
     FROM reservas r
     JOIN usuarios u ON u.id = r.usuario_id
     JOIN espacios e ON e.id = r.espacio_id
     ${whereClause}
-    ORDER BY r.fecha DESC, r.horario ASC, r.id DESC
+    ORDER BY r.fecha DESC, r.hora_inicio ASC, r.id DESC
   `;
 
   const countQuery = `

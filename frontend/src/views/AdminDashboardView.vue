@@ -638,7 +638,9 @@
         <div class="p-6 text-center space-y-4">
           <div class="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto"><Trash2 class="w-7 h-7" /></div>
           <h3 class="text-lg font-bold text-slate-900">Eliminar Espacio</h3>
-          <p class="text-sm text-slate-500">¿Estás seguro de eliminar <span class="font-semibold text-slate-800">{{ espacioAEliminar?.nombre }}</span>? Esta acción no se puede deshacer.</p>
+          <p class="text-sm text-slate-500">¿Estás seguro de eliminar <span class="font-semibold text-slate-800">{{ espacioAEliminar?.nombre }}</span>? 
+          <span v-if="espacioAEliminar?.tiene_reservas" class="text-amber-600 font-semibold block mt-1">⚠️ Se eliminarán también todas sus reservas asociadas.</span>
+          </p>
           <div v-if="deleteError" class="p-3 bg-red-50 border border-red-100 text-red-700 rounded-xl text-xs font-medium">{{ deleteError }}</div>
           <div class="flex gap-3 pt-2">
             <button @click="showDeleteModal = false; deleteError = ''" class="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl text-sm hover:bg-slate-50 transition">Cancelar</button>
@@ -766,7 +768,10 @@ export default {
           credentials: 'include'
         });
         const data = await res.json();
-        if (data.success) this.espacios = data.espacios || [];
+        if (data.success) {
+          // Ordenar espacios por ID descendente (más recientes primero)
+          this.espacios = (data.espacios || []).sort((a, b) => b.id - a.id);
+        }
       } catch (e) { console.error(e); }
       finally { this.loadingEspacios = false; }
     },
@@ -941,6 +946,8 @@ export default {
       try {
         const res = await fetch(`/api/espacios/${this.espacioAEliminar.id}`, { 
           method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ force: true }), // Permitir eliminar reservas asociadas
           credentials: 'include'
         });
         const data = await res.json();

@@ -8,7 +8,7 @@ const obtenerTodosDatos = async () => {
     const espacios = await pool.query('SELECT * FROM espacios ORDER BY id');
     const reservas = await pool.query('SELECT * FROM reservas ORDER BY id');
     const favoritos = await pool.query('SELECT * FROM espacios_favoritos ORDER BY id');
-    const administradores = await pool.query('SELECT id, nombre, email, rol, activo, created_at FROM administradores ORDER BY id');
+    const administradores = await pool.query('SELECT id, nombre, email, rol, activo, fecha_creacion FROM administradores ORDER BY id');
 
     return {
       usuarios: usuarios.rows,

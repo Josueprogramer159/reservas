@@ -22,11 +22,11 @@ const upload = multer({ storage: multer.memoryStorage() });
 router.post('/login', login);
 router.post('/logout', logout);
 router.post('/registro', registrarAdmin);
-router.get('/profile', getProfile);
-router.get('/perfil', getProfile);
-router.get('/dashboard-data', getDashboardData);
-router.get('/reservation-settings', getReservationSettings);
-router.put('/reservation-settings', updateReservationSettings);
+router.get('/profile', requireAdminAuth, getProfile);
+router.get('/perfil', requireAdminAuth, getProfile);
+router.get('/dashboard-data', requireAdminAuth, getDashboardData);
+router.get('/reservation-settings', requireAdminAuth, getReservationSettings);
+router.put('/reservation-settings', requireAdminAuth, updateReservationSettings);
 router.get('/reservas', requireAdminAuth, listarReservasAdmin);
 router.delete('/reservas/:id', requireAdminAuth, cancelarReservaAdmin);
 
@@ -47,3 +47,5 @@ router.get('/backup/completo/json',          requireAdminAuth, backupCompletoJSO
 router.post('/backup/restaurar',             requireAdminAuth, upload.single('archivo'), restaurarBackup);
 
 export default router;
+
+// RELOADED: Admin authentication middleware added - 2026-08-06

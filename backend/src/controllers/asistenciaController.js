@@ -125,7 +125,7 @@ export const registrarAsistencia = async (req, res) => {
 
     // Validación 2: Verificar que la reserva existe y está confirmada
     const reservaCheck = await pool.query(
-      `SELECT r.id, r.fecha, r.horario, r.estado, r.espacio_id,
+      `SELECT r.id, r.fecha, CONCAT(TO_CHAR(r.hora_inicio, 'HH24:MI:SS'), ' - ', TO_CHAR(r.hora_finalizacion, 'HH24:MI:SS')) AS horario, r.estado, r.espacio_id,
               e.nombre as espacio_nombre
        FROM reservas r
        JOIN espacios e ON e.id = r.espacio_id
@@ -266,7 +266,7 @@ export const obtenerHistorialAsistencias = async (req, res) => {
         e.nombre as espacio_nombre,
         e.tipo as espacio_tipo,
         r.fecha as fecha_reserva,
-        r.horario,
+        CONCAT(TO_CHAR(r.hora_inicio, 'HH24:MI:SS'), ' - ', TO_CHAR(r.hora_finalizacion, 'HH24:MI:SS')) AS horario,
         a.fecha_asistencia,
         a.hora_escaneado,
         a.estado,

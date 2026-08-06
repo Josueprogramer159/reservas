@@ -311,29 +311,72 @@ export const editarEspacio = async (req, res) => {
 export const eliminarEspacio = async (req, res) => {
   try {
     const { id } = req.params;
+    const { force } = req.body; // force = true para eliminar reservas automáticamente
+    
+    const client = await pool.connect();
 
-    const existe = await pool.query('SELECT id FROM espacios WHERE id = $1', [id]);
-    if (existe.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'El espacio no existe' });
-    }
+    try {
+      await client.query('BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE');
 
-    const reservasActivas = await pool.query(
-      `SELECT COUNT(*) FROM reservas WHERE espacio_id = $1 AND estado = 'confirmado'`,
-      [id]
-    );
+      // 1. Verificar que el espacio existe
+      const existe = await client.query('SELECT id FROM espacios WHERE id = $1', [id]);
+      if (existe.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, message: 'El espacio no existe' });
+      }
 
-    if (parseInt(reservasActivas.rows[0].count) > 0) {
-      return res.status(409).json({
-        success: false,
-        message: 'No se puede eliminar este espacio porque tiene reservas activas vigentes'
+      // 2. Contar TODAS las reservas (sin filtrar por estado)
+      const countReservas = await client.query(
+        `SELECT COUNT(*) as total FROM reservas WHERE espacio_id = $1`,
+        [id]
+      );
+      const totalReservas = parseInt(countReservas.rows[0].total);
+
+      // 3. Si hay reservas y no es force, rechazar
+      if (totalReservas > 0 && !force) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({
+          success: false,
+          message: `Este espacio tiene ${totalReservas} reserva(s). Usa force=true para eliminar reservas automáticamente, o elimínalas manualmente primero.`,
+          espacioId: id,
+          totalReservas: totalReservas
+        });
+      }
+
+      // 4. Si force=true, eliminar reservas primero
+      if (force && totalReservas > 0) {
+        await client.query('DELETE FROM reservas WHERE espacio_id = $1', [id]);
+      }
+
+      // 5. Eliminar asistencias
+      await client.query('DELETE FROM asistencias WHERE espacio_id = $1', [id]);
+
+      // 6. Eliminar favoritos
+      await client.query('DELETE FROM espacios_favoritos WHERE espacio_id = $1', [id]);
+
+      // 7. Eliminar el espacio
+      await client.query('DELETE FROM espacios WHERE id = $1', [id]);
+
+      await client.query('COMMIT');
+
+      res.json({ 
+        success: true, 
+        message: `Espacio eliminado correctamente${force ? ' (y sus reservas asociadas)' : ''}` 
       });
+
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
     }
 
-    await pool.query('DELETE FROM espacios WHERE id = $1', [id]);
-    res.json({ success: true, message: 'Espacio eliminado correctamente' });
   } catch (error) {
     console.error('Error al eliminar espacio:', error);
-    res.status(500).json({ success: false, message: 'Error al eliminar el espacio' });
+    res.status(500).json({ 
+      success: false, 
+      message: `Error al eliminar el espacio: ${error.message}` 
+    });
   }
 };
 
